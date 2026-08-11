@@ -32,6 +32,9 @@ coverage
 /.claude/
 /.codex/
 
+# Working notes / AI 작업 지침서
+/docs/
+
 # Cypress
 /cypress/videos/
 /cypress/screenshots/
