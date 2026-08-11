@@ -1,0 +1,10 @@
+/* src/assets/challenge.css */
+.btn-external {
+  background-color: #00b894;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+}
