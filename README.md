@@ -1,6 +1,6 @@
 # Weather Walk — 오늘, 걷기 좋은 날인가요?
 
-Vue 3 핵심 개념(`v-for` / `v-if` / 양방향 바인딩 / 이벤트 수식어)을 학습하기 위한 날씨 대시보드입니다.
+Vue 3 핵심 개념(`v-for` / `v-if` / 양방향 바인딩 / 이벤트 수식어 / 반응성 추적 / 컴포넌트 분리)을 학습하기 위한 날씨 대시보드입니다.
 단순히 기온을 나열하는 대신, **날씨 데이터를 일상 언어로 번역하는 생활 지수 5종**과 **산책 가능 시간 · 외출 준비물 추천**을 제공합니다.
 
 현재는 국내 8개 도시의 **Mock 데이터**로 동작하며, OpenWeather API 연동 코드는 이미 작성되어 환경변수 한 줄로 전환할 수 있습니다. (아래 [데이터 소스 전환](#데이터-소스-전환) 참고)
@@ -19,7 +19,9 @@ Vue 3 핵심 개념(`v-for` / `v-if` / 양방향 바인딩 / 이벤트 수식어
 - **산책 추천 시간** — 시간대별 예보에서 걷기 좋은 구간만 추출, 없으면 대체 문구 표시
 - **외출 준비물 추천** — 기온·강수·미세먼지·풍속·습도 조건별 준비물 목록 생성
 - **즐겨찾기 토글** — 카드의 ★ 버튼, 버블링 차단으로 카드 선택과 분리
-- **상대 시간 표기** — `3분 전 업데이트`, 1분 간격 자동 갱신
+- **상대 시간 표기** — `20분 전 업데이트`, 1분 간격 자동 갱신
+- **반응형 상태 추적 로그** — `watch` 5종 + `watchEffect`가 상태 변화를 콘솔과 화면 패널에 동시 기록
+- **요약 지표** — 도시 수 · 평균 기온 · 최고 기온 도시 · 즐겨찾기 수 · 산책 추천 1위
 - **로딩 / 에러 / 빈 결과 상태 처리** 및 반응형 그리드 레이아웃
 
 ---
@@ -28,22 +30,23 @@ Vue 3 핵심 개념(`v-for` / `v-if` / 양방향 바인딩 / 이벤트 수식어
 
 ### 지역별 날씨 카드
 
-`WeatherCardList`가 `filteredCities`를 `v-for`로 순회하고 `:key="city.id"`를 바인딩합니다.
-카드 클릭 시 상단 섹션 헤더의 상태 메시지가 `"{도시}이(가) 선택되었습니다."`로 바뀌며, 선택된 카드에는 `selected` 클래스가 붙습니다. 검색 결과가 0건이면 카드 그리드 대신 안내 블록(`v-else`)이 노출됩니다.
+`WeatherParent`가 `filteredCities`를 `v-for`로 순회하고 `:key="city.id"`를 바인딩합니다. 카드들은 `BaseDashboardCard`의 슬롯 안에 놓이지만, 슬롯 콘텐츠는 부모 스코프에서 컴파일되므로 `WeatherCard`는 `WeatherParent`와 직접 props/emit을 주고받습니다.
+
+카드 클릭 시 카드 헤더 우측의 상태 메시지가 `"{도시}이(가) 선택되었습니다."`로 바뀌며, 선택된 카드에는 `selected` 클래스가 붙습니다. 검색 결과가 0건이면 카드 그리드 대신 안내 블록(`v-else`)이 노출됩니다.
 
 ### 한글 도시 검색
 
-`CitySearch`는 `v-model`을 직접 쓰지 않고 `:value` / `@input`으로 나눠 처리합니다.
+`SearchBar`는 `v-model`을 직접 쓰지 않고 `:value` / `@input`으로 나눠 처리합니다.
 
 ```vue
 <input
   :value="modelValue"
   type="search"
-  @input="emit('update:modelValue', $event.target.value)"
+  @input="emit('update-query', $event.target.value)"
 />
 ```
 
-부모(`App.vue`)는 `v-model="searchQuery"`로 받고, `watch(searchQuery, ...)`가 스토어의 검색을 트리거합니다. 검색은 **300ms 디바운스** 후 실행되며, 이전 요청은 `AbortController`로 취소합니다.
+부모(`WeatherParent`)는 `@update-query="searchQuery = $event"`로 받고, `watch(searchQuery, ...)`가 스토어의 검색을 트리거합니다. 검색은 **300ms 디바운스** 후 실행되며, 이전 요청은 `AbortController`로 취소합니다.
 
 로컬 카탈로그 매칭은 `aliases` 배열 기반이라 `서울시`, `제주도`, `ulsan` 같은 표기도 잡습니다.
 
@@ -75,7 +78,7 @@ recentSearches.value = [value, ...recentSearches.value.filter((item) => item !==
 
 ```vue
 <button @click.stop="$emit('toggle-favorite', city)" @keydown.stop>★</button>
-<button @click.stop="$emit('show-detail', city)" @keydown.stop>상세보기 →</button>
+<button @click.stop="$emit('click-detail', city)" @keydown.stop>상세보기 →</button>
 ```
 
 - 검색 폼: `@submit.prevent`로 기본 제출 차단
@@ -223,7 +226,9 @@ score         = temp <= 15 ? 0 : clamp(round(tempScore + humidityScore - windPen
 < 60초 → 방금 전 · < 60분 → N분 전 · < 24시간 → N시간 전 · 그 이상 → N일 전
 ```
 
-`App.vue`가 `setInterval`로 1분마다 `now`를 갱신하고 이를 prop으로 내려주기 때문에, 카드가 각자 타이머를 갖지 않아도 표기가 함께 갱신됩니다.
+`WeatherParent`가 `setInterval`로 1분마다 `now`를 갱신하고 이를 prop으로 내려주기 때문에, 카드가 각자 타이머를 갖지 않아도 표기가 함께 갱신됩니다.
+
+Mock의 `updatedAt`은 **모듈 로드 시점 기준 20분 전**으로 계산됩니다. 고정 날짜를 쓰면 시간이 지날수록 `N일 전`이 계속 늘어나 상대 시간 표기와 1분 갱신이 동작하는지 확인할 수 없기 때문입니다. 예보 날짜도 같은 기준으로 함께 이동하므로 `findNextRain`의 `daysFromNow`는 변하지 않습니다.
 
 ---
 
@@ -249,7 +254,7 @@ Mock과 API가 **동일한 내부 스키마**를 반환합니다. 지수 로직�
   pm10: 25,                 // ㎍/㎥
   forecast: [{ dt, pop }],  // 일별
   hourly:   [{ dt, temp, feelsLike, status, pop }],
-  updatedAt: '2026-08-11T09:00:00+09:00',
+  updatedAt: '…',           // ISO 문자열. Mock은 로드 시점 기준 20분 전
   isFavorite: false,
 }
 ```
@@ -307,7 +312,6 @@ VITE_OPENWEATHER_KEY=발급받은_키
 ### 미연동 / 로드맵
 
 - 🔜 실 API 키 검증 및 에러 케이스 대응
-- 🔜 **라우팅 활성화** — 대시보드를 `views/`로 옮기고 `App.vue`에 `<RouterView>` 배치 ([라우팅](#라우팅) 참고)
 - 🔜 즐겨찾기 · 최근 검색어 localStorage 영속화
 - 🔜 즐겨찾기 전용 화면, 도시 상세 화면 (현재 상세는 `window.alert`)
 - 🔜 지도 기반 도시 추가
@@ -323,7 +327,7 @@ VITE_OPENWEATHER_KEY=발급받은_키
 | UI 프레임워크 | Vue 3 (Composition API, `<script setup>`) | |
 | 빌드 도구 | Vite 8 | `@` → `src` 별칭 설정됨 (현재 상대 경로 import 사용) |
 | 상태 관리 | Pinia 3 | Setup Store 문법 |
-| 라우팅 | Vue Router 5 | 등록은 되어 있으나 `<RouterView>` 미배치 ([라우팅](#라우팅) 참고) |
+| 라우팅 | Vue Router 5 | `App.vue`가 `<RouterView>`만 렌더, 404 Catch-all |
 | HTTP | **네이티브 `fetch`** | 별도 HTTP 라이브러리 미사용 |
 | 스타일 | 순수 CSS + CSS 변수 토큰 | UI 라이브러리 미사용 |
 | 테스트 | `node:test` + `node:assert` | 별도 러너 미설치 |
@@ -365,17 +369,23 @@ npm run lint
 .env.example                         # 데이터 소스 · API 키 템플릿
 src/
 ├── main.js                          # 앱 진입점 (Pinia · Router 등록)
-├── App.vue                          # 날씨 대시보드 본체 (오케스트레이션)
+├── App.vue                          # <RouterView /> 만 렌더하는 셸
 ├── assets/styles/                   # reset · tokens · global
+├── router/index.js                  # / · 404 Catch-all
+├── views/
+│   ├── WeatherDashboardView.vue     # 라우트 진입점 (<WeatherParent /> 한 줄)
+│   └── NotFoundView.vue             # 404
 ├── components/weather/
-│   ├── CitySearch.vue               # 검색 입력 + 최근 검색 태그
+│   ├── WeatherParent.vue            # 상태·계산·핸들러 오케스트레이션
+│   ├── BaseDashboardCard.vue        # 패널 껍데기 + <slot> / <slot name="meta">
+│   ├── SearchBar.vue                # 검색 입력 + 최근 검색 태그
 │   ├── CitySearchResults.vue        # 검색 결과 드롭다운
-│   ├── WeatherCardList.vue          # 카드 그리드 / 빈 상태
 │   ├── WeatherCard.vue              # 도시 카드
 │   ├── IndexGrid.vue                # 지수 그리드
 │   ├── IndexCard.vue                # 지수 카드 (점수 게이지)
 │   ├── PreparationPanel.vue         # 외출 준비물
-│   └── WalkTimePanel.vue            # 산책 추천 시간
+│   ├── WalkTimePanel.vue            # 산책 추천 시간
+│   └── LogPanel.vue                 # 반응형 상태 추적 로그
 ├── stores/
 │   └── weatherStore.js              # Pinia 스토어
 ├── services/
@@ -393,6 +403,7 @@ src/
     ├── weatherModel.js              # 타입 정의 + clamp / 위치 비교 유틸
     ├── citySearch.js
     ├── formatRelativeTime.js
+    ├── logger.js                    # 로그 접두사 포맷 (Vue 비의존)
     ├── indices/                     # 지수 5종 + 레지스트리
     │   ├── index.js                 # INDICES 레지스트리 · computeIndices
     │   ├── carWash.js
@@ -426,19 +437,19 @@ src/assets/base.css, main.css, challenge.css
 
 | 경로 | 이름 | 컴포넌트 | 설명 |
 | --- | --- | --- | --- |
-| `/` | `home` | `HomeView` | 스캐폴드 기본 화면 |
-| `/about` | `about` | `AboutView` | Lazy Loading |
+| `/` | `weather-dashboard` | `WeatherDashboardView` | 대시보드 |
+| `/:pathMatch(.*)*` | `not-found` | `NotFoundView` | 404 Catch-all |
 
-라우터는 `main.js`에서 `app.use(router)`로 등록되어 있습니다. 다만 **`App.vue`가 `<RouterView>`를 렌더하지 않고 대시보드를 직접 그리기 때문에, 위 라우트는 실제로 화면에 표시되지 않습니다.** 어떤 경로로 접근하든 대시보드가 보입니다.
+`App.vue`는 `<RouterView />`만 렌더하는 셸이고, `views/WeatherDashboardView.vue`는 `<WeatherParent />` 한 줄만 갖는 얇은 진입점입니다. 실제 상태와 로직은 전부 `components/weather/WeatherParent.vue`에 있습니다.
 
-단일 화면 구성이라 동작에는 문제가 없습니다. 즐겨찾기·상세 화면을 분리하는 시점에 대시보드를 `views/`로 옮기고 `App.vue`에 `<RouterView>`를 두면 됩니다.
+이 3단 구성 덕분에 즐겨찾기·상세 같은 화면을 추가할 때 **`views/`에 파일 하나 만들고 라우트 한 줄 추가**하면 되고, 기존 컴포넌트는 props/emit만 쓰므로 그대로 재사용됩니다.
 
 ---
 
 ## 데이터 흐름
 
 ```
-onMounted (App.vue)
+onMounted (WeatherParent.vue)
   → store.loadCities()
     → weatherService.listInitialCities()   ← mock 또는 openweather
       → (API인 경우) mapOpenWeatherBundle
@@ -453,7 +464,7 @@ onMounted (App.vue)
       → getWalkableHours(...hourly)    → WalkTimePanel
 
 사용자가 검색어 입력
-  → v-model → watch → store.searchCities(query)
+  → @update-query → watch → store.searchCities(query)
     → 300ms 디바운스 + AbortController
       → searchResults → CitySearchResults
         → 선택 시 addCityFromSearchResult → cities에 추가
@@ -461,7 +472,8 @@ onMounted (App.vue)
 
 역할 분담:
 
-- **App.vue** — 스토어와 계산 유틸을 조립하고 사용자 액션을 위임. 계산 로직 없음
+- **App.vue / View** — 라우팅 셸과 진입점. 로직 없음
+- **WeatherParent** — 스토어와 계산 유틸을 조립하고 사용자 액션을 위임. 계산 로직 없음
 - **Component** — props로 받고 emit으로 알림. 스토어 직접 접근 없음
 - **Store** — 상태·비동기·디바운스·중복 판정
 - **Service / Provider** — 데이터 출처 추상화
@@ -474,25 +486,56 @@ onMounted (App.vue)
 
 ### Composition API
 
-- `ref` — `cities`, `searchQuery`, `selectionMessage`, `now`
-- `computed` — `selectedCity`, `filteredCities`, `favoriteCities`, `indices`, `walkableHours`
-- `watch` — `searchQuery` 변경 시 검색 트리거
+- `ref` — `cities`, `searchQuery`, `selectionMessage`, `now`, `logs`
+- `computed` — `selectedCity`, `filteredCities`, `indices`, `outdoorIndex`, `preparationItems`, `walkableHours`, `showSearchResults`, `dashboardSummary`, `bestWalkCity`
 - `storeToRefs` — 스토어 상태를 반응성 유지한 채 구조 분해
 - `onMounted` / `onBeforeUnmount` — 1분 타이머 등록 및 정리, 진행 중 검색 취소
+
+### 반응성 감시 (watch / watchEffect)
+
+`WeatherParent`에 `watch` 5개와 `watchEffect` 1개가 있습니다. 첫 번째만 실제 동작을 일으키고, 나머지 5개는 로그 전용이라 모두 제거해도 앱은 동일하게 작동합니다.
+
+| 대상 | 방식 | 역할 |
+| --- | --- | --- |
+| `searchQuery` | `watch` | **검색 실행 트리거** (유일한 기능성 watcher) |
+| `selectionMessage` | `watch` | 상태바 문구 변경 로그 |
+| (자동 추적) | `watchEffect` | 검색어 + 결과 건수 로그. 마운트 즉시 1회 실행 |
+| `cities` | `watch` + `{ deep: true }` | 즐겨찾기 토글·도시 증감 감지 |
+| `[selectedCityId, searchQuery]` | `watch` 배열 다중 소스 | 두 값 통합 감지 |
+| `() => bestWalkCity?.id` | `watch` getter 소스 | 산책 1위 변경 (이전 값 추적 가능) |
+
+getter 소스를 쓰는 이유는 객체 전체를 감시하면 `oldValue`가 보존되지 않기 때문입니다.
+
+로그는 `utils/logger.js`가 접두사를 붙이고, `pushLog`가 콘솔과 `logs` ref에 **동일한 문자열**을 남깁니다. `LogPanel`이 최근 20건을 화면에 표시하므로 콘솔을 열지 않고도 반응성 발화를 확인할 수 있습니다.
 
 ### 컴포넌트 통신
 
 | 컴포넌트 | props | emits |
 | --- | --- | --- |
-| `CitySearch` | `modelValue`, `resultCount`, `recentSearches` | `update:modelValue`, `submit`, `select-recent`, `remove-recent` |
+| `BaseDashboardCard` | `title`, `titleId`, `eyebrow`, `icon` | — (슬롯: 기본 / `meta`) |
+| `SearchBar` | `modelValue`, `resultCount`, `recentSearches` | `update-query`, `submit`, `select-recent`, `remove-recent` |
 | `CitySearchResults` | `results`, `status`, `visible` | `select` |
-| `WeatherCardList` | `cities`, `selectedCityId`, `now` | `select`, `show-detail`, `toggle-favorite` |
-| `WeatherCard` | `city`, `selected`, `now` | `select`, `show-detail`, `toggle-favorite` |
+| `WeatherCard` | `city`, `selected`, `now` | `select-card`, `click-detail`, `toggle-favorite` |
 | `IndexGrid` / `IndexCard` | `indices` / `index` | — |
 | `PreparationPanel` | `cityName`, `items` | — |
 | `WalkTimePanel` | `city`, `availableHours`, `walkImage`, `stayHomeImage` | — |
+| `LogPanel` | `logs` | — |
 
-`update:modelValue`를 emit하므로 `CitySearch`는 부모에서 `v-model`로 사용됩니다.
+### 슬롯과 스코프
+
+`BaseDashboardCard`는 패널 껍데기(테두리·라운드·그림자·헤더)만 갖는 액자이고, 내용은 `<slot>`으로 주입받습니다.
+
+```vue
+<BaseDashboardCard eyebrow="REGIONAL WEATHER" title="지역별 날씨" title-id="cities-title">
+  <template #meta>{{ selectionMessage }}</template>
+  <WeatherCard v-for="city in filteredCities" :key="city.id" :city="city"
+    @select-card="handleSelectCity" @click-detail="handleDetail" />
+</BaseDashboardCard>
+```
+
+`<WeatherCard>`는 화면상 `BaseDashboardCard` 안에 그려지지만 **코드상으로는 `WeatherParent`의 템플릿에 적혀 있으므로 부모 스코프에서 컴파일**됩니다. 따라서 props/emit 상대는 언제나 `WeatherParent`이고, `BaseDashboardCard`는 데이터를 전혀 만지지 않습니다.
+
+같은 이유로 **슬롯 콘텐츠는 `BaseDashboardCard`의 `<style scoped>`를 받지 않습니다.** 내용 스타일은 전부 넣는 쪽에 둡니다. 패널마다 다른 배경·아이콘 색은 CSS 변수(`--card-bg`, `--card-icon-bg` 등)로 노출해 사용처에서 덮어씁니다.
 
 ### Pinia
 
@@ -555,9 +598,45 @@ export const computeIndices = (weather) =>
 
 | 요건 | 구현 위치 |
 | --- | --- |
-| 배열 렌더링 (`v-for`) + `:key` | `WeatherCardList`(도시), `IndexGrid`(지수), `CitySearch`(최근 검색), `WalkTimePanel`(시간대) |
-| 조건부 렌더링 (`v-if`) | 25℃ 기준 더움/선선함 뱃지, 지수 4단계 등급, 산책 가능 시간 유무, 로딩/에러/빈 결과 |
-| 양방향 바인딩 · 한글 처리 (`:value`, `@input`) | `components/weather/CitySearch.vue` — IME 조합 대응을 위해 `v-model` 대신 수동 바인딩 |
-| 카드 선택 시 상태 표기 | `App.vue`의 `handleSelectCity` → `"{도시}이(가) 선택되었습니다."` |
-| 상세보기 버블링 차단 | `@click.stop="$emit('show-detail', city)"` → `window.alert` |
+### 과제 1 — Mockup
+
+| 요건 | 구현 위치 |
+| --- | --- |
+| 배열 렌더링 (`v-for`) + `:key` | `WeatherParent`(도시), `IndexGrid`(지수), `SearchBar`(최근 검색), `WalkTimePanel`(시간대) |
+| 조건부 렌더링 (`v-if`) | `WeatherCard`의 25℃ 기준 더움/선선함 뱃지, 산책 가능 시간 유무, 로딩/에러/빈 결과 |
+| 양방향 바인딩 · 한글 처리 (`:value`, `@input`) | `SearchBar.vue` — IME 조합 대응을 위해 `v-model` 대신 수동 바인딩 |
+| 카드 선택 시 상태 표기 | `WeatherParent`의 `handleSelectCity` → `"{도시}이(가) 선택되었습니다."` |
+| 상세보기 버블링 차단 | `@click.stop="$emit('click-detail', city)"` → `window.alert` |
 | 본인 데이터 추가 | 8개 도시 카탈로그, 시간대별·일별 예보, 미세먼지, 생활 지수 5종, 산책 시간 · 외출 준비물 추천 |
+
+### 과제 2 — 반응형 상태 추적
+
+과제 문서의 변수명과 구현의 변수명이 다릅니다. 스토어와 테스트가 현재 이름에 묶여 있어 리네이밍하지 않았습니다.
+
+| 과제 문서 | 구현 | 위치 |
+| --- | --- | --- |
+| `searchQuery` | `searchQuery` | 스토어 state |
+| `weatherList` | `cities` | 스토어 state |
+| `filteredWeatherList` | `filteredCities` | 스토어 getter |
+| `selectedCityInfo` | `selectedCity` | 스토어 getter |
+
+| 요건 | 구현 위치 |
+| --- | --- |
+| 반응형 상태 관리 | 위 대응표 참고 |
+| computed 필터링 | `filteredCities` — 검색어를 `name`/`state`/`apiName`에 부분 일치 |
+| `watch`로 상태바 문구 감시 | `watch(selectionMessage, …)` → 콘솔 + `LogPanel` |
+| `watchEffect`로 검색어 추적 | 마운트 즉시 1회 + 타이핑마다 발화 |
+| 검색 결과 3분기 표시 | 빈 검색어→전체 / 일치→해당 카드 / 불일치→안내 블록 |
+| 본인 상태·computed·watcher 추가 | `logs` ref + `LogPanel`, `dashboardSummary`·`bestWalkCity` computed, deep·다중 소스·getter 소스 watcher 3종 |
+
+### 과제 3 — 컴포넌트 분리
+
+| 요건 | 구현 위치 |
+| --- | --- |
+| `WeatherParent.vue` — 모든 반응형 데이터 유지 | `components/weather/WeatherParent.vue` |
+| `BaseDashboardCard.vue` — 디자인 공통화 + `<slot>` | 6개 패널이 공유. `meta` 네임드 슬롯 포함 |
+| `SearchBar.vue` — props/emits | `modelValue` ← / `update-query` → |
+| `WeatherCard.vue` — props/emits | `city` ← / `select-card`·`click-detail` → |
+| 컴포넌트별 `<style scoped>` 분리 | 껍데기는 `BaseDashboardCard`, 내용 스타일은 각 컴포넌트 |
+| 슬롯 자식은 부모 스코프에서 컴파일 | [슬롯과 스코프](#슬롯과-스코프) 참고 |
+| 추가 Component | `IndexGrid`·`IndexCard`·`PreparationPanel`·`WalkTimePanel`·`LogPanel`·`CitySearchResults` |

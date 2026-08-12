@@ -8,13 +8,8 @@ const props = defineProps({
   now: { type: Number, required: true },
 })
 
-defineEmits(['select', 'show-detail', 'toggle-favorite'])
+defineEmits(['select-card', 'click-detail', 'toggle-favorite'])
 
-const temperatureInfo = computed(() =>
-  props.city.temp >= 25
-    ? { label: '더움', icon: '☀', tone: 'hot' }
-    : { label: '선선함', icon: '❄', tone: 'cool' },
-)
 const weatherIcon = computed(() => {
   if (props.city.status.includes('비')) return '🌧️'
   if (props.city.status.includes('흐림') || props.city.status.includes('구름')) return '⛅'
@@ -30,9 +25,9 @@ const weatherIcon = computed(() => {
     role="button"
     tabindex="0"
     :aria-label="`${city.name} 날씨 선택`"
-    @click="$emit('select', city)"
-    @keydown.enter="$emit('select', city)"
-    @keydown.space.prevent="$emit('select', city)"
+    @click="$emit('select-card', city)"
+    @keydown.enter="$emit('select-card', city)"
+    @keydown.space.prevent="$emit('select-card', city)"
   >
     <div class="card-top">
       <span class="weather-icon" aria-hidden="true">{{ weatherIcon }}</span>
@@ -56,9 +51,8 @@ const weatherIcon = computed(() => {
 
     <div class="temperature-row">
       <strong>{{ city.temp }}<small>℃</small></strong>
-      <span class="temp-badge" :class="temperatureInfo.tone"
-        >{{ temperatureInfo.icon }} {{ temperatureInfo.label }}</span
-      >
+      <span v-if="city.temp >= 25" class="temp-badge hot">☀ 더움</span>
+      <span v-else class="temp-badge cool">❄ 선선함</span>
     </div>
 
     <div class="card-meta">
@@ -68,7 +62,7 @@ const weatherIcon = computed(() => {
 
     <div class="card-footer">
       <small>{{ formatRelativeTime(city.updatedAt, now) }} 업데이트</small>
-      <button type="button" @click.stop="$emit('show-detail', city)" @keydown.stop>
+      <button type="button" @click.stop="$emit('click-detail', city)" @keydown.stop>
         상세보기 →
       </button>
     </div>

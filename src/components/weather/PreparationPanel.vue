@@ -1,4 +1,6 @@
 <script setup>
+import BaseDashboardCard from './BaseDashboardCard.vue'
+
 defineProps({
   cityName: { type: String, required: true },
   items: { type: Array, default: () => [] },
@@ -6,14 +8,12 @@ defineProps({
 </script>
 
 <template>
-  <section class="recommendation-panel">
-    <div class="panel-heading">
-      <span>🎒</span>
-      <div>
-        <small>READY TO GO</small>
-        <h2>{{ cityName }} 외출 준비</h2>
-      </div>
-    </div>
+  <BaseDashboardCard
+    :title="`${cityName} 외출 준비`"
+    title-id="preparation-title"
+    eyebrow="READY TO GO"
+    icon="🎒"
+  >
     <div class="preparation-list">
       <article v-for="item in items" :key="item.id">
         <span>{{ item.icon }}</span>
@@ -23,42 +23,13 @@ defineProps({
         </div>
       </article>
     </div>
-  </section>
+  </BaseDashboardCard>
 </template>
 
 <style scoped>
-.recommendation-panel {
+.dashboard-card {
+  --card-icon-bg: #fff3dc;
   height: 100%;
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-xl);
-  padding: 22px;
-  background: var(--surface-glass);
-  box-shadow: var(--shadow-card);
-}
-.panel-heading {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 17px;
-}
-.panel-heading > span {
-  display: grid;
-  width: 46px;
-  height: 46px;
-  place-items: center;
-  border-radius: 14px;
-  background: #fff3dc;
-  font-size: 1.35rem;
-}
-small {
-  color: var(--ink-400);
-  font-size: 0.62rem;
-  letter-spacing: 0.08em;
-}
-h2 {
-  margin: 2px 0 0;
-  color: var(--ink-900);
-  font-size: 1.1rem;
 }
 .preparation-list {
   display: grid;
@@ -85,8 +56,11 @@ article strong {
   color: var(--ink-700);
   font-size: 0.78rem;
 }
-article small {
+.preparation-list small {
   overflow: hidden;
+  color: var(--ink-400);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

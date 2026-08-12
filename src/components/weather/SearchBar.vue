@@ -1,22 +1,24 @@
 <script setup>
+import BaseDashboardCard from './BaseDashboardCard.vue'
+
 defineProps({
   modelValue: { type: String, default: '' },
   resultCount: { type: Number, default: 0 },
   recentSearches: { type: Array, default: () => [] },
 })
 
-const emit = defineEmits(['update:modelValue', 'submit', 'select-recent', 'remove-recent'])
+const emit = defineEmits(['update-query', 'submit', 'select-recent', 'remove-recent'])
 </script>
 
 <template>
-  <section class="search-panel" aria-labelledby="city-search-title">
-    <div class="section-heading">
-      <div>
-        <span class="eyebrow">CITY FINDER</span>
-        <h2 id="city-search-title">오늘 걸을 도시를 찾아보세요</h2>
-      </div>
+  <BaseDashboardCard
+    eyebrow="CITY FINDER"
+    title="오늘 걸을 도시를 찾아보세요"
+    title-id="city-search-title"
+  >
+    <template #meta>
       <span class="result-count">{{ resultCount }}개 도시</span>
-    </div>
+    </template>
 
     <form class="search-form" @submit.prevent="emit('submit')">
       <span aria-hidden="true">⌕</span>
@@ -26,7 +28,7 @@ const emit = defineEmits(['update:modelValue', 'submit', 'select-recent', 'remov
         autocomplete="off"
         placeholder="서울, 울산, 제주처럼 입력해 보세요"
         aria-label="도시 검색"
-        @input="emit('update:modelValue', $event.target.value)"
+        @input="emit('update-query', $event.target.value)"
       />
       <button type="submit">검색</button>
     </form>
@@ -44,45 +46,29 @@ const emit = defineEmits(['update:modelValue', 'submit', 'select-recent', 'remov
         </button>
       </div>
     </div>
-  </section>
+  </BaseDashboardCard>
 </template>
 
 <style scoped>
-.search-panel {
+.dashboard-card {
+  --card-heading-gap: 20px;
+  --card-heading-margin: 18px;
+  --card-eyebrow-color: var(--primary-700);
+  --card-eyebrow-size: 0.68rem;
+  --card-eyebrow-weight: 800;
+  --card-eyebrow-spacing: 0.14em;
+  --card-title-margin: 4px 0 0;
+  --card-title-size: clamp(1.15rem, 2vw, 1.45rem);
   position: relative;
   z-index: 5;
   padding: 24px;
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-xl);
-  background: var(--surface-glass);
-  box-shadow: var(--shadow-card);
   backdrop-filter: blur(18px);
 }
 
-.section-heading,
 .recent-row,
 .search-form {
   display: flex;
   align-items: center;
-}
-
-.section-heading {
-  justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 18px;
-}
-
-.eyebrow {
-  color: var(--primary-700);
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-}
-
-h2 {
-  margin: 4px 0 0;
-  color: var(--ink-900);
-  font-size: clamp(1.15rem, 2vw, 1.45rem);
 }
 
 .result-count {
@@ -164,7 +150,7 @@ input {
 }
 
 @media (max-width: 540px) {
-  .search-panel {
+  .dashboard-card {
     padding: 18px;
   }
   .result-count {

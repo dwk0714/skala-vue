@@ -1,5 +1,6 @@
 <script setup>
 import { formatHour } from '../../utils/recommendations/walkTimes.js'
+import BaseDashboardCard from './BaseDashboardCard.vue'
 
 defineProps({
   city: { type: Object, required: true },
@@ -10,15 +11,14 @@ defineProps({
 </script>
 
 <template>
-  <section class="walk-panel" :class="{ danger: !availableHours.length }">
-    <div class="panel-heading">
-      <span>🚶</span>
-      <div>
-        <small>WALK WINDOW</small>
-        <h2>{{ city.name }} 산책 추천 시간</h2>
-      </div>
-    </div>
-
+  <BaseDashboardCard
+    class="walk-panel"
+    :class="{ danger: !availableHours.length }"
+    :title="`${city.name} 산책 추천 시간`"
+    title-id="walk-title"
+    eyebrow="WALK WINDOW"
+    icon="🚶"
+  >
     <template v-if="availableHours.length">
       <div class="image-slot">
         <img v-if="walkImage" :src="walkImage" alt="산책 추천" />
@@ -39,44 +39,26 @@ defineProps({
       </div>
       <p class="danger-message">밖은 위험해.. 이불 속에 숨기</p>
     </template>
-  </section>
+  </BaseDashboardCard>
 </template>
 
 <style scoped>
 .walk-panel {
+  --card-bg: linear-gradient(
+    140deg,
+    rgba(230, 247, 238, 0.9),
+    rgba(232, 245, 255, 0.78)
+  );
+  --card-heading-margin: 0;
+  --card-icon-bg: rgba(255, 255, 255, 0.72);
   height: 100%;
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-xl);
-  padding: 22px;
-  background: linear-gradient(140deg, rgba(230, 247, 238, 0.9), rgba(232, 245, 255, 0.78));
-  box-shadow: var(--shadow-card);
 }
 .walk-panel.danger {
-  background: linear-gradient(140deg, rgba(245, 241, 247, 0.92), rgba(236, 240, 246, 0.85));
-}
-.panel-heading {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.panel-heading > span {
-  display: grid;
-  width: 46px;
-  height: 46px;
-  place-items: center;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.72);
-  font-size: 1.35rem;
-}
-small {
-  color: var(--ink-400);
-  font-size: 0.62rem;
-  letter-spacing: 0.08em;
-}
-h2 {
-  margin: 2px 0 0;
-  color: var(--ink-900);
-  font-size: 1.1rem;
+  --card-bg: linear-gradient(
+    140deg,
+    rgba(245, 241, 247, 0.92),
+    rgba(236, 240, 246, 0.85)
+  );
 }
 .image-slot {
   height: 54px;

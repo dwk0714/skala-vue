@@ -1,7 +1,26 @@
 import { KOREAN_CITY_CATALOG } from './koreanCityCatalog.js'
 
 const TIMEZONE = 9 * 60 * 60
-const epoch = (value) => Math.floor(Date.parse(value) / 1000)
+const DAY = 86400
+const rawEpoch = (value) => Math.floor(Date.parse(value) / 1000)
+
+/**
+ * 아래 데이터가 기준으로 삼는 날짜. 실제 dt는 이 날짜를 "오늘"로 당겨서 계산한다.
+ * 고정 날짜를 그대로 쓰면 시간이 지날수록 "N일 전 업데이트"가 계속 늘어나고,
+ * 상대 시간 표기와 1분 갱신 타이머가 동작하는 걸 확인할 수 없다.
+ */
+const BASE_DATE = '2026-08-11'
+const UPDATED_AT_MS = Date.now() - 20 * 60 * 1000
+
+const dayIndex = (seconds) => Math.floor((seconds + TIMEZONE) / DAY)
+// 예보 날짜를 updatedAt과 같은 날에 맞춘다. 둘을 같은 기준으로 옮겨야
+// 자정 근처에서도 findNextRain의 daysFromNow가 어긋나지 않는다.
+const SHIFT =
+  (dayIndex(Math.floor(UPDATED_AT_MS / 1000)) -
+    dayIndex(rawEpoch(`${BASE_DATE}T00:00:00+09:00`))) *
+  DAY
+
+const epoch = (value) => rawEpoch(value) + SHIFT
 const city = (id) => KOREAN_CITY_CATALOG.find((item) => item.id === id)
 const hour = (date, time, temp, status = '맑음', pop = 0) => ({
   dt: epoch(`${date}T${time}:00+09:00`),
@@ -18,7 +37,7 @@ const makeWeather = (id, current, hourly, forecast) => ({
   ...current,
   forecast,
   hourly,
-  updatedAt: '2026-08-11T09:00:00+09:00',
+  updatedAt: new Date(UPDATED_AT_MS).toISOString(),
   isFavorite: false,
 })
 
