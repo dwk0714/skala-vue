@@ -1,3 +1,23 @@
+/**
+ * koreanCityCatalog.js — 국내 8개 도시 기준 데이터
+ *
+ * 무엇을 담나: 도시별 좌표와 검색 별칭. 이 앱에서 "국내 도시"의 정의가 여기다.
+ *
+ * 어디서 쓰나 (3곳):
+ *   weatherMock.js       각 도시의 가짜 날씨를 만들 때 기본 정보로 사용
+ *   citySearch.js        검색어를 aliases와 대조
+ *   openWeatherProvider  초기 8개 도시를 실 API로 조회할 좌표 목록
+ *
+ * 필드 설명:
+ *   id       내부 고유 id (예: 'kr-seoul')
+ *   name     화면에 표시할 한글 이름
+ *   apiName  OpenWeather가 쓰는 영문 이름
+ *   state    행정구역. 카드의 도시명 위에 표시된다
+ *   aliases  검색 매칭용 표기 모음. '제주도', 'jeju' 같은 변형을 여기 넣으면 검색에 잡힌다
+ *   coords   위도·경도. 실 API 조회와 중복 판정(isSameLocation)에 쓰인다
+ *
+ * 도시를 추가하려면 이 배열에 항목을 넣고, mock으로도 쓰려면 weatherMock.js에 시나리오를 추가한다.
+ */
 export const KOREAN_CITY_CATALOG = [
   {
     id: 'kr-seoul',

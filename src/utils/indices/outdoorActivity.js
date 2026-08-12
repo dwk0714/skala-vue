@@ -1,9 +1,31 @@
+/**
+ * outdoorActivity.js — 🌳 야외활동 지수
+ *
+ * 100점에서 시작해 불리한 조건마다 깎는 감점 방식.
+ * 이 지수만 추천 활동 배열(activities)을 추가로 반환하며,
+ * 선택 도시 배너의 "활동 N점"과 상세보기 alert에도 이 점수가 쓰인다.
+ */
 import { clamp } from '../weatherModel.js'
 
 export default {
   id: 'outdoor-activity',
   label: '야외활동 지수',
   icon: '🌳',
+  /**
+   * 야외활동 지수를 계산한다.
+   *
+   * 입력: weather {Object} temp·pop·pm10·windSpeed·humidity 사용
+   * 출력: { score, level, message, activities }
+   *       activities는 이 지수만 반환하는 추가 필드로, IndexCard가 칩으로 렌더한다.
+   * 기능: 100점에서 아래 순서로 감점한다.
+   *         기온   15℃ 미만 / 26℃ 초과 시 1℃당 4점 (최대 35)
+   *         강수   강수확률 × 40
+   *         미세먼지 >80:30 / >50:20 / >30:10
+   *         풍속   >10:20 / >6:10
+   *         습도   >85:10 / >70:5
+   *       등급 기준이 다른 지수보다 높다(80/60/40). 야외활동은 조건이 웬만큼 좋아야
+   *       "나가기 좋다"고 말할 수 있기 때문이다.
+   */
   compute(weather) {
     let score = 100
     if (weather.temp < 15) score -= Math.min((15 - weather.temp) * 4, 35)

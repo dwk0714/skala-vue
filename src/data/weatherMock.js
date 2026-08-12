@@ -1,3 +1,15 @@
+/**
+ * weatherMock.js — API 없이 화면을 돌리기 위한 가짜 날씨 데이터
+ *
+ * 설계 의도: 8개 도시의 지수 등급이 서로 갈리도록 시나리오를 짰다.
+ *   서울=쾌청 / 수원=종일 비 / 제주=고온다습 …
+ *   한쪽으로 쏠리면 v-if 분기와 등급별 색상이 화면에 드러나지 않기 때문이다.
+ *   이 "등급이 갈려야 한다"는 조건은 test/weather.test.js가 자동으로 강제한다.
+ *
+ * 날짜 처리: 아래 BASE_DATE를 기준으로 작성된 데이터를 "오늘"로 당겨서 쓴다.
+ *   고정 날짜를 그대로 두면 시간이 지날수록 모든 카드가 "N일 전 업데이트"가 되어
+ *   상대 시간 표기와 1분 갱신 타이머가 동작하는지 확인할 수 없다.
+ */
 import { KOREAN_CITY_CATALOG } from './koreanCityCatalog.js'
 
 const TIMEZONE = 9 * 60 * 60
@@ -16,8 +28,7 @@ const dayIndex = (seconds) => Math.floor((seconds + TIMEZONE) / DAY)
 // 예보 날짜를 updatedAt과 같은 날에 맞춘다. 둘을 같은 기준으로 옮겨야
 // 자정 근처에서도 findNextRain의 daysFromNow가 어긋나지 않는다.
 const SHIFT =
-  (dayIndex(Math.floor(UPDATED_AT_MS / 1000)) -
-    dayIndex(rawEpoch(`${BASE_DATE}T00:00:00+09:00`))) *
+  (dayIndex(Math.floor(UPDATED_AT_MS / 1000)) - dayIndex(rawEpoch(`${BASE_DATE}T00:00:00+09:00`))) *
   DAY
 
 const epoch = (value) => rawEpoch(value) + SHIFT

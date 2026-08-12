@@ -1,9 +1,24 @@
+/**
+ * bungeoppang.js — 🐟 붕어빵 지수
+ *
+ * 다른 지수와 반대로 기온이 낮을수록 점수가 올라가는 역방향 지수다.
+ * Mock 8개 도시에서 등급이 갈리도록 하는 데 이 지수가 큰 역할을 한다.
+ */
 import { clamp } from '../weatherModel.js'
 
 export default {
   id: 'bungeoppang',
   label: '붕어빵 지수',
   icon: '🐟',
+  /**
+   * 붕어빵 지수를 계산한다.
+   *
+   * 입력: weather {Object} temp 사용
+   * 출력: { score, level, message }
+   * 기능: 15℃ 이상이면 0점으로 반전되고, 0℃ 이하면 100점.
+   *       그 사이는 (15 - 기온) / 15 을 백분율로 환산한다.
+   *       등급이 'none'인 경우만 문구가 "오늘은 붕어빵 없음"이 된다.
+   */
   compute(weather) {
     const score =
       weather.temp >= 15
