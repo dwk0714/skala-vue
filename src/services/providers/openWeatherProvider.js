@@ -1,6 +1,6 @@
 /**
  * OpenWeather 실 API 프로바이더.
- * 외부 응답은 Mapper를 거쳐 Mock과 같은 내부 데이터 형식으로 반환한다.
+ * 외부 응답은 Mapper를 거쳐 앱 내부 데이터 형식으로 반환한다.
  */
 import axios from 'axios'
 import { mapKoreanGeocodingResults } from '../mappers/locationMapper.js'

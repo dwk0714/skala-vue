@@ -2,7 +2,7 @@
  * openWeatherMapper.js — OpenWeather 응답 3종을 내부 스키마 하나로 합친다
  *
  * 이 파일이 있어서 지수 계산 로직은 "OpenWeather"라는 말을 몰라도 된다.
- * mock 데이터와 실 API가 여기서 같은 모양으로 수렴한다.
+ * OpenWeather 응답을 앱의 고정된 내부 데이터 형식으로 변환한다.
  */
 import { clampPop, makeLocationId } from '../../utils/weatherModel.js'
 
@@ -130,7 +130,7 @@ export const groupDailyForecast = (items = [], timezone = 0) => {
  *   current     /data/2.5/weather 응답
  *   forecast    /data/2.5/forecast 응답
  *   airPollution /data/2.5/air_pollution 응답
- * 출력: {Object} mock과 동일한 형태의 도시 날씨 객체
+ * 출력: {Object} 앱 내부 형식의 도시 날씨 객체
  *
  * 기능: 모든 필드에 ?? 기본값을 둔다. 무료 플랜이나 일부 지역에서 필드가 빠져 와도
  *       화면이 깨지지 않게 하기 위해서다.

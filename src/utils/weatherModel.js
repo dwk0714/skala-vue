@@ -5,7 +5,6 @@
  *   지수 5종      → clamp
  *   매퍼 2개      → clampPop, makeLocationId
  *   스토어        → isSameLocation
- *   mock 프로바이더 → isSameLocation
  * 여기를 고치면 위 전부에 영향이 가므로 변경에 주의할 것.
  *
  * 왜 .vue가 아니라 별도 파일인가:
@@ -13,7 +12,7 @@
  */
 
 /**
- * @typedef {Object} CityWeather  Mock과 실 API가 모두 이 형태로 맞춰 반환한다.
+ * @typedef {Object} CityWeather  OpenWeather 응답을 이 형태로 변환해 사용한다.
  *   지수 계산 로직은 데이터가 어디서 왔는지 알 필요가 없다.
  * @property {string} id
  * @property {string} name

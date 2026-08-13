@@ -7,7 +7,7 @@
 Weather Walk는 국내 도시의 날씨를 단순한 숫자로 보여주는 데서 끝나지 않고,
 **“오늘 걸어도 될까?”, “무엇을 챙겨야 할까?”, “어느 도시가 외출하기 더 좋을까?”**처럼 일상에서 바로 사용할 수 있는 정보로 바꾸어 보여주는 Vue 3 날씨 대시보드입니다.
 
-OpenWeather의 실시간 날씨를 조회할 수 있으며, API Key가 없어도 준비된 Mock 데이터로 전체 기능을 실행할 수 있습니다. 지역별 날씨, 상세 예보, 생활 지수, 산책 추천, 외출 브리핑, 날씨별 음악 추천, 즐겨찾기와 도시 날씨 대결까지 한 프로젝트 안에서 확인할 수 있습니다.
+OpenWeather의 실시간 데이터를 사용해 지역별 날씨, 상세 예보, 생활 지수, 산책 추천, 외출 브리핑, 날씨별 음악 추천, 즐겨찾기와 도시 날씨 대결까지 한 프로젝트 안에서 제공합니다.
 
 ---
 
@@ -16,7 +16,7 @@ OpenWeather의 실시간 날씨를 조회할 수 있으며, API Key가 없어도
 - [프로젝트 소개](#프로젝트-소개)
 - [주요 기능](#주요-기능)
 - [빠른 시작](#빠른-시작)
-- [환경변수와 데이터 소스 설정](#환경변수와-데이터-소스-설정)
+- [OpenWeather 환경변수 설정](#openweather-환경변수-설정)
 - [화면과 Route 구성](#화면과-route-구성)
 - [기능 구현 상세](#기능-구현-상세)
 - [생활 날씨 지수 계산](#생활-날씨-지수-계산)
@@ -44,8 +44,8 @@ OpenWeather의 실시간 날씨를 조회할 수 있으며, API Key가 없어도
 1. **날씨를 행동으로 번역합니다.**
    기온과 강수확률만 나열하지 않고 산책 시간, 외출 준비물, 생활 지수와 음악을 추천합니다.
 
-2. **Mock과 실 API가 같은 화면을 사용합니다.**
-   Provider와 Mapper를 분리하여 데이터 출처가 바뀌어도 View와 컴포넌트를 수정하지 않습니다.
+2. **API 경계를 화면과 분리합니다.**
+   Provider와 Mapper를 분리하여 OpenWeather 요청과 응답 변환이 View와 컴포넌트에 섞이지 않게 합니다.
 
 3. **외부 API 응답을 앱 내부에 그대로 퍼뜨리지 않습니다.**
    OpenWeather 응답은 고정된 내부 날씨 모델로 변환한 뒤 Store와 UI에 전달합니다.
@@ -111,7 +111,7 @@ OpenWeather의 실시간 날씨를 조회할 수 있으며, API Key가 없어도
 - 지수별 라운드 승자와 최종 승리 도시 표시
 - 모기 지수는 낮은 도시가 승리하고 종합점수에서는 감점 요소로 계산
 - 양쪽 도시의 상세 날씨 페이지로 이동
-- 생년월일 기반 Mock “오늘의 레이스 운세” 팝업
+- 생년월일 기반 “오늘의 레이스 운세” 팝업
 
 ---
 
@@ -148,9 +148,21 @@ cd skala-vue
 npm install
 ```
 
-### 4. API 없이 Mock 모드로 실행
+### 4. OpenWeather API Key 설정
 
-환경변수 파일을 만들지 않으면 기본값인 Mock 모드로 동작합니다.
+안전한 예시 파일을 복사해 `.env.local`을 만듭니다.
+
+```bash
+cp .env.example .env.local
+```
+
+복사한 `.env.local`을 열어 다음 값을 입력합니다.
+
+```dotenv
+VITE_OPENWEATHER_KEY=발급받은_API_KEY
+```
+
+### 5. 개발 서버 실행
 
 ```bash
 npm run dev
@@ -165,50 +177,17 @@ Network: http://현재-IP:5173/
 
 브라우저에서 Local 주소를 열면 됩니다. 5173 포트를 이미 다른 프로그램이 사용 중이면 Vite가 5174처럼 다음 포트를 자동으로 사용할 수 있으므로 터미널에 출력된 주소를 확인하세요.
 
-### 5. 실시간 OpenWeather 모드로 실행
-
-안전한 예시 파일을 복사해 `.env.local`을 만듭니다.
-
-```bash
-cp .env.example .env.local
-```
-
-복사한 `.env.local`을 열어 다음 값을 입력합니다.
-
-```dotenv
-VITE_WEATHER_SOURCE=openweather
-VITE_OPENWEATHER_KEY=발급받은_API_KEY
-```
-
-개발 서버가 실행 중이었다면 환경변수를 다시 읽도록 종료 후 재실행합니다.
-
-```bash
-npm run dev
-```
-
 ---
 
-## 환경변수와 데이터 소스 설정
+## OpenWeather 환경변수 설정
 
-### Mock 모드
-
-API Key 없이 안정적으로 모든 화면과 계산 결과를 확인하고 싶을 때 사용합니다.
+날씨 조회에는 OpenWeather API Key가 필요합니다. `.env.local`에 다음 한 항목을 설정합니다.
 
 ```dotenv
-VITE_WEATHER_SOURCE=mock
-VITE_OPENWEATHER_KEY=
-```
-
-또는 `.env.local` 파일을 만들지 않아도 `mock`이 기본값으로 선택됩니다.
-
-Mock 데이터는 단순히 같은 값을 복사한 데이터가 아닙니다. 도시별로 비, 바람, 습도와 기온을 다르게 배치하여 생활 지수의 `high`, `mid`, `low`, `none` 분기가 실제 화면에서 보이도록 구성했습니다.
-
-### OpenWeather 모드
-
-```dotenv
-VITE_WEATHER_SOURCE=openweather
 VITE_OPENWEATHER_KEY=발급받은_API_KEY
 ```
+
+Key가 없거나 유효하지 않으면 날씨 화면에 설정 또는 인증 오류가 표시됩니다. 환경변수를 바꾼 뒤에는 개발 서버를 다시 시작해야 합니다.
 
 사용하는 OpenWeather API는 다음과 같습니다.
 
@@ -382,7 +361,7 @@ OpenWeather Air Pollution 응답의 `components.pm10`을 사용합니다. 원본
 
 ### 5. 섭씨와 화씨
 
-API와 Mock의 원본 기온은 항상 섭씨로 유지합니다. 생활 지수 계산도 섭씨 기준입니다.
+OpenWeather에서 받은 원본 기온은 항상 섭씨로 유지합니다. 생활 지수 계산도 섭씨 기준입니다.
 
 화씨는 화면에 표시할 때만 `useTemperature()` Composable에서 변환합니다.
 
@@ -469,13 +448,13 @@ hour.pop === 0 && hour.temp >= 15 && hour.temp <= 26 && 강수_상태_키워드�
 
 - 입력값: 생년월일 하나
 - 미래 날짜 선택 방지
-- 로컬 `fortuneMock.json`에서 결과 선택
+- 로컬 `fortuneMessages.json`에서 결과 선택
 - 생년월일과 오늘 날짜를 조합한 간단한 시드 사용
 - 같은 생년월일과 같은 날짜에는 같은 결과 표시
 - 팝업을 닫으면 입력값과 결과 즉시 초기화
 - Pinia, Local Storage, URL, 외부 API에 생년월일을 저장하거나 전송하지 않음
 
-운세는 오락용 Mock 콘텐츠이며 실제 사주·점성술 API 결과가 아닙니다.
+운세는 로컬 메시지를 이용한 오락용 콘텐츠이며 실제 사주·점성술 API 결과가 아닙니다.
 
 ---
 
@@ -595,13 +574,11 @@ total = carWash + outdoorActivity + iceAmericano + bungeoppang - mosquito
 flowchart LR
     A[View 진입 또는 사용자 검색] --> B[Pinia weatherStore]
     B --> C[weatherService]
-    C -->|mock| D[mockWeatherProvider]
-    C -->|openweather| E[openWeatherProvider]
-    E --> F[Axios / OpenWeather API]
-    F --> G[Mapper]
-    D --> H[내부 CityWeather 모델]
-    G --> H
-    H --> B
+    C --> D[openWeatherProvider]
+    D --> E[Axios / OpenWeather API]
+    E --> F[Mapper]
+    F --> G[내부 CityWeather 모델]
+    G --> B
     B --> I[View]
     I --> J[props]
     J --> K[UI Component]
@@ -610,7 +587,7 @@ flowchart LR
 
 ### 내부 날씨 모델
 
-Mock과 OpenWeather 응답은 모두 다음 형태로 통일됩니다.
+OpenWeather 응답은 Mapper에서 다음 내부 형태로 변환됩니다.
 
 ```js
 {
@@ -684,7 +661,7 @@ Mock과 OpenWeather 응답은 모두 다음 형태로 통일됩니다.
 
 Mapper는 결측 필드에 안전한 기본값을 제공하고 강수확률을 0~1로 제한합니다.
 
-### Provider 공통 인터페이스
+### OpenWeather Provider 인터페이스
 
 | 메서드                                | 역할                              |
 | ------------------------------------- | --------------------------------- |
@@ -694,7 +671,7 @@ Mapper는 결측 필드에 안전한 기본값을 제공하고 강수확률을 0
 | `fetchCityDetails(location, options)` | 예보와 PM10 보충                  |
 | `fetchCityWeather(location, options)` | 현재·예보·PM10 전체 조회          |
 
-Mock Provider도 `async` 인터페이스를 사용하기 때문에 Store에서 데이터 출처별 분기 없이 동일하게 `await`할 수 있습니다. Mock 반환값은 `structuredClone()`으로 복사해 원본 데이터가 즐겨찾기 변경 등으로 오염되지 않게 합니다.
+Provider의 모든 네트워크 메서드는 `async/await` 방식으로 호출되며, Store는 HTTP 응답 구조 대신 변환된 내부 날씨 모델만 사용합니다.
 
 ---
 
@@ -828,7 +805,6 @@ src/
 ├── services/
 │   ├── weatherService.js
 │   ├── providers/
-│   │   ├── mockWeatherProvider.js
 │   │   └── openWeatherProvider.js
 │   └── mappers/
 │       ├── locationMapper.js
@@ -836,8 +812,7 @@ src/
 │
 ├── data/
 │   ├── koreanCityCatalog.js
-│   ├── weatherMock.js
-│   ├── fortuneMock.json
+│   ├── fortuneMessages.json
 │   └── weatherMusic.json
 │
 ├── utils/
@@ -870,19 +845,19 @@ src/
 
 ### 폴더별 역할
 
-| 폴더                      | 역할                                       |
-| ------------------------- | ------------------------------------------ |
-| `views`                   | Route와 연결되는 페이지 단위 데이터 흐름   |
-| `components`              | props와 emit 중심의 재사용 UI              |
-| `stores`                  | 여러 View가 공유하는 반응형 상태와 Action  |
-| `composables`             | Vue 반응성을 재사용하는 기능               |
-| `services`                | 데이터 공급자 선택과 외부 API 호출         |
-| `providers`               | Mock 또는 OpenWeather라는 실제 데이터 출처 |
-| `mappers`                 | 외부 응답을 내부 모델로 변환               |
-| `data`                    | 도시 카탈로그, Mock 날씨, 운세와 음악 목록 |
-| `utils`                   | Vue와 무관한 순수 계산                     |
-| `assets/styles`           | 전역 디자인 토큰, 리셋, Element Plus 보정  |
-| Vue 파일의 `style scoped` | 해당 컴포넌트에만 필요한 레이아웃과 표현   |
+| 폴더                      | 역할                                      |
+| ------------------------- | ----------------------------------------- |
+| `views`                   | Route와 연결되는 페이지 단위 데이터 흐름  |
+| `components`              | props와 emit 중심의 재사용 UI             |
+| `stores`                  | 여러 View가 공유하는 반응형 상태와 Action |
+| `composables`             | Vue 반응성을 재사용하는 기능              |
+| `services`                | Store와 외부 API Provider 연결            |
+| `providers`               | OpenWeather 요청과 오류 처리              |
+| `mappers`                 | 외부 응답을 내부 모델로 변환              |
+| `data`                    | 도시 카탈로그, 운세와 음악 목록           |
+| `utils`                   | Vue와 무관한 순수 계산                    |
+| `assets/styles`           | 전역 디자인 토큰, 리셋, Element Plus 보정 |
+| Vue 파일의 `style scoped` | 해당 컴포넌트에만 필요한 레이아웃과 표현  |
 
 `components/practices`는 수업 실습 기록을 보존하는 폴더이며 현재 날씨 라우트의 UI 구성에는 사용하지 않습니다.
 
@@ -1009,23 +984,11 @@ npm run build
 
 ## v1.0 배포 안내
 
-### Mock 관련 파일을 배포에 포함하는 이유
+### 배포 소스 구성
 
-다음 파일은 개발 중에만 사용하는 임시 파일처럼 보이지만, 현재 v1.0 구조에서는 **배포 빌드에 포함해야 하는 런타임 자산**입니다.
+배포 저장소에는 OpenWeather Provider와 응답 Mapper만 포함합니다. 날씨 화면은 항상 실시간 API를 호출하며, API Key가 없거나 인증에 실패하면 사용자에게 오류 상태를 표시합니다.
 
-| 파일                                            | 배포 저장소에 필요한 이유                                                         |
-| ----------------------------------------------- | --------------------------------------------------------------------------------- |
-| `src/services/providers/mockWeatherProvider.js` | `weatherService.js`가 정적으로 import하며 API 설정이 없을 때 기본 Provider로 사용 |
-| `src/data/weatherMock.js`                       | Mock 모드에서 화면·지수·추천·대결에 사용하는 실제 런타임 데이터                   |
-| `src/data/fortuneMock.json`                     | “오늘의 레이스 운세”가 화면에서 직접 읽는 런타임 데이터                           |
-
-이 파일들을 `.gitignore`에 추가하면 로컬에는 파일이 남아 있어 당장 문제가 없어 보일 수 있지만, 새로 clone한 CI·배포 서버에는 파일이 내려오지 않습니다. 그러면 정적 import 해석 단계에서 빌드가 실패하거나 운세 기능이 동작하지 않습니다.
-
-따라서 v1.0에서는 Mock 관련 파일을 의도적으로 Git에 포함합니다. 향후 Mock 모드를 완전히 제거하려면 파일만 ignore하는 것이 아니라 다음 작업을 함께 해야 합니다.
-
-1. `weatherService.js`에서 Mock Provider import와 분기를 제거합니다.
-2. 기본 데이터 소스를 `openweather`로 변경합니다.
-3. API Key가 없는 배포 환경에서 보여줄 설정 오류 화면을 확인합니다.
+`fortuneMessages.json`과 `weatherMusic.json`은 각각 운세 문구와 음악 추천 목록을 제공하는 일반 UI 콘텐츠이므로 배포 빌드에 포함됩니다.
 
 `test/`는 앱에서 import하지 않고 Vite 빌드에도 포함되지 않는 로컬 검증 코드입니다. 배포 실행에 필요하지 않으므로 Git 추적 대상에서 제외하고 `.gitignore`로 관리합니다.
 
@@ -1043,7 +1006,6 @@ npm run build
 실시간 날씨로 배포할 때는 호스팅 서비스의 Environment Variables에 다음 값을 등록합니다.
 
 ```dotenv
-VITE_WEATHER_SOURCE=openweather
 VITE_OPENWEATHER_KEY=배포_서비스에_등록한_API_KEY
 ```
 
@@ -1100,11 +1062,7 @@ API Key가 포함된 전체 URL이나 Axios 오류 객체를 공개 저장소, �
 
 ### 요청이 429입니다
 
-OpenWeather 요청 한도를 초과한 상태입니다. 잠시 기다린 뒤 다시 시도하거나 Mock 모드로 전환하세요.
-
-```dotenv
-VITE_WEATHER_SOURCE=mock
-```
+OpenWeather 요청 한도를 초과한 상태입니다. API 사용량을 확인하고 잠시 기다린 뒤 다시 시도하세요.
 
 ### `npm run dev`를 실행했는데 브라우저가 자동으로 열리지 않습니다
 
@@ -1118,9 +1076,7 @@ Vite는 기본적으로 터미널에 주소만 표시합니다. 출력된 `Local
 
 ### 검색 결과가 없습니다
 
-Mock 모드는 로컬 국내 도시 카탈로그 안에서만 검색합니다. 카탈로그에 없는 도시를 동적으로 검색하려면 OpenWeather 모드를 사용해야 합니다.
-
-OpenWeather 모드에서도 결과는 국내 `KR` 지역으로 제한됩니다.
+초기 8개 도시는 로컬 국내 도시 카탈로그의 좌표를 사용하고, 추가 검색은 OpenWeather Geocoding API를 사용합니다. 검색 결과는 국내 `KR` 지역으로 제한됩니다.
 
 ### 새로고침했더니 즐겨찾기와 설정이 사라졌습니다
 
@@ -1134,7 +1090,7 @@ OpenWeather 모드에서도 결과는 국내 `KR` 지역으로 제한됩니다.
 - 즐겨찾기와 최근 검색은 새로고침하면 초기화됩니다.
 - 도시 대결 결과와 전적은 저장하지 않습니다.
 - 운세 생년월일은 팝업을 닫는 즉시 초기화되며 외부로 보내지 않습니다.
-- 운세는 로컬 Mock JSON 기반의 오락용 콘텐츠입니다.
+- 운세는 로컬 메시지 JSON 기반의 오락용 콘텐츠입니다.
 - 음악 추천 목록은 로컬 JSON이며 실제 재생은 Spotify Embed와 네트워크 상태에 영향을 받습니다.
 - OpenWeather 무료 5 day / 3 hour Forecast 범위 안에서만 일별 예보를 제공합니다.
 - 자외선, 체감 강수량, 실시간 레이더와 기상 특보는 아직 제공하지 않습니다.

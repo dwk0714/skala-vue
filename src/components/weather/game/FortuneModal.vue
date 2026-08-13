@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
-import fortuneMessages from '../../../data/fortuneMock.json'
+import fortuneMessages from '../../../data/fortuneMessages.json'
 
 const props = defineProps({ open: { type: Boolean, default: false } })
 const emit = defineEmits(['close'])
@@ -106,9 +106,7 @@ watch(birthDate, () => {
       >
         {{ fortune ? '전략 다시 확인하기' : '피트월 메시지 확인하기' }}
       </ElButton>
-      <small
-        >재미로 보는 Mock 운세이며, 입력한 생년월일은 저장하거나 외부로 전송하지 않습니다.</small
-      >
+      <small>오락용 메시지이며, 입력한 생년월일은 저장하거나 외부로 전송하지 않습니다.</small>
     </article>
   </ElDialog>
 </template>

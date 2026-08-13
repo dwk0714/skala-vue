@@ -2,7 +2,7 @@
  * citySearch.js — 도시 검색어 정규화와 카탈로그 매칭
  *
  * 왜 .vue가 아니라 별도 파일인가:
- *   스토어(필터링)와 프로바이더 두 곳(mock·실API)에서 같은 규칙을 써야 한다.
+ *   스토어의 필터링과 API 검색 전처리에서 같은 규칙을 써야 한다.
  *   컴포넌트 안에 두면 세 곳에 같은 코드를 복사해야 한다.
  */
 import { KOREAN_CITY_CATALOG } from '../data/koreanCityCatalog.js'
