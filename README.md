@@ -984,6 +984,8 @@ npm run build
 
 ## v1.0 배포 안내
 
+배포 주소: [https://dwk0714.github.io/skala-vue/](https://dwk0714.github.io/skala-vue/)
+
 ### 배포 소스 구성
 
 배포 저장소에는 OpenWeather Provider와 응답 Mapper만 포함합니다. 날씨 화면은 항상 실시간 API를 호출하며, API Key가 없거나 인증에 실패하면 사용자에게 오류 상태를 표시합니다.
@@ -992,31 +994,31 @@ npm run build
 
 `test/`는 앱에서 import하지 않고 Vite 빌드에도 포함되지 않는 로컬 검증 코드입니다. 배포 실행에 필요하지 않으므로 Git 추적 대상에서 제외하고 `.gitignore`로 관리합니다.
 
-### 배포 환경 설정
+### GitHub Pages 자동 배포
 
-정적 호스팅 서비스에는 다음 값을 사용합니다.
+`.github/workflows/deploy.yml`이 `my_first_vue_work` 브랜치에 푸시될 때 다음 작업을 자동으로 실행합니다.
 
-| 설정             | 값                          |
-| ---------------- | --------------------------- |
-| Install command  | `npm install` 또는 `npm ci` |
-| Build command    | `npm run build`             |
-| Output directory | `dist`                      |
-| Node.js          | 20.19 이상 또는 22.12 이상  |
+1. `npm ci`
+2. `npm run build`
+3. `dist/` 업로드
+4. GitHub Pages 배포
 
-실시간 날씨로 배포할 때는 호스팅 서비스의 Environment Variables에 다음 값을 등록합니다.
+저장소의 **Settings → Secrets and variables → Actions**에 다음 Repository Secret을 등록해야 합니다.
 
 ```dotenv
-VITE_OPENWEATHER_KEY=배포_서비스에_등록한_API_KEY
+VITE_OPENWEATHER_KEY=발급받은_API_KEY
 ```
 
-`.env.local`은 로컬 개발용이므로 Git에 올리지 않습니다. `.env.example`에는 변수 이름과 안전한 기본값만 기록합니다.
+Vite의 `base`는 프로젝트 주소에 맞게 `/skala-vue/`로 설정했습니다. Vue Router는 GitHub Pages에서 하위 Route를 새로고침해도 404가 발생하지 않도록 Hash History를 사용하므로 주소는 `/skala-vue/#/weather` 형태로 표시됩니다.
+
+`.env.local`은 로컬 개발용이며 Git에 올리지 않습니다. GitHub에는 실제 Key 대신 암호화된 Actions Secret만 저장합니다.
 
 ### 배포 전 체크리스트
 
 - [ ] `npm ci` 또는 `npm install` 성공
 - [ ] `npm run lint` 성공
 - [ ] `npm run build` 성공
-- [ ] 배포 환경의 OpenWeather 변수 등록
+- [ ] GitHub Actions Secret `VITE_OPENWEATHER_KEY` 등록
 - [ ] `.env.local`과 실제 API Key가 Git에 포함되지 않았는지 확인
 - [ ] `/`, `/weather`, `/weather/:cityId`, `/indices`, `/favorites`, `/battle`, `/about` 직접 접근 확인
 - [ ] 라이트·다크 모드와 섭씨·화씨 전환 확인
