@@ -14,6 +14,14 @@ dist-ssr
 coverage
 *.local
 
+# Environment variables (safe template only)
+.env
+.env.*
+!.env.example
+
+# Local test sources are not part of the deployment repository
+/test/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

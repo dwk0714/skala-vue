@@ -26,7 +26,7 @@ OpenWeather의 실시간 날씨를 조회할 수 있으며, API Key가 없어도
 - [프로젝트 구조](#프로젝트-구조)
 - [기술 스택](#기술-스택)
 - [Vue 학습 요소](#vue-학습-요소)
-- [테스트와 코드 검사](#테스트와-코드-검사)
+- [코드 검사와 빌드](#코드-검사와-빌드)
 - [v1.0 배포 안내](#v10-배포-안내)
 - [문제 해결](#문제-해결)
 - [현재 저장 정책과 제한 사항](#현재-저장-정책과-제한-사항)
@@ -54,7 +54,7 @@ OpenWeather의 실시간 날씨를 조회할 수 있으며, API Key가 없어도
    도시, 검색, 선택, 즐겨찾기와 설정은 Pinia가 관리하고, 도시 대결의 두 선택값과 운세 팝업 상태는 해당 View와 컴포넌트에만 둡니다.
 
 5. **계산식은 UI에서 분리합니다.**
-   생활 지수, 산책 시간, 준비물, 음악과 대결 결과는 Vue 컴포넌트가 아닌 순수 JavaScript 함수로 계산하며 Node 기본 테스트로 검증합니다.
+   생활 지수, 산책 시간, 준비물, 음악과 대결 결과는 Vue 컴포넌트가 아닌 순수 JavaScript 함수로 분리합니다.
 
 ---
 
@@ -866,9 +866,6 @@ src/
     └── images/
         ├── battle/
         └── walk/
-
-test/
-└── weather.test.js
 ```
 
 ### 폴더별 역할
@@ -903,7 +900,6 @@ test/
 | UI 라이브러리 | Element Plus           | Skeleton, Dialog, DatePicker, Select, Result 등 |
 | 아이콘        | Element Plus Icons Vue | 검색·깃발 등 인터페이스 아이콘                  |
 | 스타일        | CSS                    | 디자인 토큰, Glass UI, 다크 모드, 반응형 화면   |
-| 테스트        | Node `node:test`       | Mapper, Provider, 지수와 추천 순수 함수         |
 | 정적 검사     | ESLint, Oxlint         | 문법·Vue 규칙·코드 품질 검사                    |
 | 포맷          | Prettier               | 소스 코드 형식 통일                             |
 
@@ -972,36 +968,7 @@ Axios 요청은 `async/await`으로 읽기 쉽게 작성했습니다. 여러 독
 
 ---
 
-## 테스트와 코드 검사
-
-### 전체 테스트
-
-```bash
-npm test
-```
-
-Node 기본 `node:test`를 사용하며 현재 다음 영역을 검증합니다.
-
-- 국내 도시 카탈로그와 별칭 검색
-- 국내 Geocoding 결과 필터
-- Forecast의 현지 날짜 그룹
-- 일별 최저·최고 기온과 대표 날씨
-- OpenWeather 내부 모델 매핑
-- PM10 5단계 분류
-- 생활 지수 레지스트리와 Mock 등급 분포
-- 손세차 다음 비와 지수 경계
-- 산책 가능 시간과 날씨 이미지
-- 오늘의 외출 브리핑
-- 날씨와 현지 시간 기반 음악 추천
-- 오늘 8개 Forecast 슬롯
-- Mock/OpenWeather Provider 선택
-- 섭씨/화씨 변환과 원본 데이터 불변
-- Axios 파라미터와 응답 매핑
-- 점진적 초기 로딩과 상세 지연 요청
-- 취소·401·429·timeout·네트워크 오류 변환
-- 도시 대결과 모기 역방향 규칙
-- 동일 도시 선택 방지와 무승부
-- 단위 변경 후 대결 결과 불변
+## 코드 검사와 빌드
 
 ### Lint
 
@@ -1035,7 +1002,6 @@ npm run preview
 
 ```bash
 npm run lint
-npm test
 npm run build
 ```
 
@@ -1045,14 +1011,13 @@ npm run build
 
 ### Mock 관련 파일을 배포에 포함하는 이유
 
-다음 파일은 개발 중에만 사용하는 임시 파일처럼 보이지만, 현재 v1.0 구조에서는 **소스 저장소와 배포 빌드에 포함해야 하는 런타임·테스트 자산**입니다.
+다음 파일은 개발 중에만 사용하는 임시 파일처럼 보이지만, 현재 v1.0 구조에서는 **배포 빌드에 포함해야 하는 런타임 자산**입니다.
 
 | 파일                                            | 배포 저장소에 필요한 이유                                                         |
 | ----------------------------------------------- | --------------------------------------------------------------------------------- |
 | `src/services/providers/mockWeatherProvider.js` | `weatherService.js`가 정적으로 import하며 API 설정이 없을 때 기본 Provider로 사용 |
-| `src/data/weatherMock.js`                       | Mock 모드의 실제 날씨 데이터이며 지수·추천·대결 테스트의 기준 데이터              |
+| `src/data/weatherMock.js`                       | Mock 모드에서 화면·지수·추천·대결에 사용하는 실제 런타임 데이터                   |
 | `src/data/fortuneMock.json`                     | “오늘의 레이스 운세”가 화면에서 직접 읽는 런타임 데이터                           |
-| `test/weather.test.js`                          | 배포 전 Mapper, Provider, 지수와 대결 규칙을 검증                                 |
 
 이 파일들을 `.gitignore`에 추가하면 로컬에는 파일이 남아 있어 당장 문제가 없어 보일 수 있지만, 새로 clone한 CI·배포 서버에는 파일이 내려오지 않습니다. 그러면 정적 import 해석 단계에서 빌드가 실패하거나 운세 기능이 동작하지 않습니다.
 
@@ -1060,8 +1025,9 @@ npm run build
 
 1. `weatherService.js`에서 Mock Provider import와 분기를 제거합니다.
 2. 기본 데이터 소스를 `openweather`로 변경합니다.
-3. Mock에 의존하는 테스트를 별도 fixture로 이전하거나 교체합니다.
-4. API Key가 없는 배포 환경에서 보여줄 설정 오류 화면을 확인합니다.
+3. API Key가 없는 배포 환경에서 보여줄 설정 오류 화면을 확인합니다.
+
+`test/`는 앱에서 import하지 않고 Vite 빌드에도 포함되지 않는 로컬 검증 코드입니다. 배포 실행에 필요하지 않으므로 Git 추적 대상에서 제외하고 `.gitignore`로 관리합니다.
 
 ### 배포 환경 설정
 
@@ -1083,15 +1049,10 @@ VITE_OPENWEATHER_KEY=배포_서비스에_등록한_API_KEY
 
 `.env.local`은 로컬 개발용이므로 Git에 올리지 않습니다. `.env.example`에는 변수 이름과 안전한 기본값만 기록합니다.
 
-### SPA fallback
-
-이 프로젝트는 `createWebHistory()`를 사용합니다. `/weather/kr-seoul`, `/battle`처럼 하위 주소에서 새로고침해도 동작하려면 배포 서비스가 알 수 없는 경로를 `index.html`로 보내도록 SPA rewrite 또는 fallback을 설정해야 합니다.
-
 ### 배포 전 체크리스트
 
 - [ ] `npm ci` 또는 `npm install` 성공
 - [ ] `npm run lint` 성공
-- [ ] `npm test` 성공
 - [ ] `npm run build` 성공
 - [ ] 배포 환경의 OpenWeather 변수 등록
 - [ ] `.env.local`과 실제 API Key가 Git에 포함되지 않았는지 확인
@@ -1164,10 +1125,6 @@ OpenWeather 모드에서도 결과는 국내 `KR` 지역으로 제한됩니다.
 ### 새로고침했더니 즐겨찾기와 설정이 사라졌습니다
 
 현재 의도된 동작입니다. Pinia 상태를 Local Storage에 저장하지 않기 때문에 새로고침 시 초기화됩니다.
-
-### 동적 상세 URL을 배포 서버에서 새로고침하면 404가 발생합니다
-
-Vue Router가 `createWebHistory()`를 사용하므로 배포 서버에 SPA fallback 설정이 필요합니다. 모든 알 수 없는 요청을 `index.html`로 보내도록 사용하는 배포 서비스의 rewrite 설정을 추가하세요.
 
 ---
 
