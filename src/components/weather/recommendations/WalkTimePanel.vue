@@ -6,7 +6,7 @@
     걷기 좋은 시간을 고르는 판단은 utils/recommendations/walkTimes.js 가 이미 끝냈고,
     여기서는 결과 배열을 받아 그리기만 한다.
 
-  부모:  WeatherParent.vue — 선택 도시 아래 2단 그리드의 오른쪽 칸
+  부모:  WeatherIndicesView.vue — 선택 도시 아래 2단 그리드의 오른쪽 칸
   자식:  BaseDashboardCard.vue — 패널 껍데기를 빌려 쓴다
 
   두 가지 화면 상태:
@@ -15,8 +15,12 @@
                               "밖은 위험해.. 이불 속에 숨기" 문구만 표시
 -->
 <script setup>
-import { formatHour } from '../../utils/recommendations/walkTimes.js'
-import BaseDashboardCard from './BaseDashboardCard.vue'
+import { computed } from 'vue'
+import { useTemperature } from '../../../composables/useTemperature.js'
+import { formatHour } from '../../../utils/recommendations/walkTimes.js'
+import BaseDashboardCard from '../shared/BaseDashboardCard.vue'
+
+const { displayTemperature, unitSymbol } = useTemperature()
 
 /**
  * props
@@ -25,16 +29,47 @@ import BaseDashboardCard from './BaseDashboardCard.vue'
  * @property {Array}  availableHours  걷기 좋은 시간대 배열. getWalkableHours()의 결과.
  *                                    각 원소는 { dt, temp, status }.
  *                                    비어 있으면 danger 상태로 전환된다
- * @property {string} walkImage       산책 추천 일러스트 경로. 아직 이미지가 없어 빈 문자열이며
- *                                    이 경우 자리표시자 박스만 보인다 (추후 정적 import로 채울 자리)
- * @property {string} stayHomeImage   실내 휴식 일러스트 경로. 위와 동일
+ * @property {string} image           현재 강수 상태에 맞춰 부모가 고른 산책 이미지 경로
+ * @property {string} weatherType     'sunny' | 'rain' | 'thunder' | 'snow' | 'hail'.
+ *                                    이미지 설명과 안내 문구를 바꾼다
  */
-defineProps({
+const props = defineProps({
   city: { type: Object, required: true },
   availableHours: { type: Array, default: () => [] },
-  walkImage: { type: String, default: '' },
-  stayHomeImage: { type: String, default: '' },
+  image: { type: String, required: true },
+  weatherType: { type: String, default: 'sunny' },
 })
+
+/** 사진과 같은 날씨를 설명해 스크린 리더와 안내 문구도 함께 바뀌게 한다. */
+const WEATHER_COPY = {
+  sunny: {
+    alt: '맑은 날 공원을 산책하는 사람',
+    available: '비 걱정 없이 걷기 좋은 시간이에요.',
+    unavailable: '오늘은 추천 산책 시간대가 없어요.',
+  },
+  rain: {
+    alt: '비 오는 날 우산을 쓰고 산책하는 사람',
+    available: '비 예보가 있어요. 추천 시간에도 작은 우산을 챙겨주세요.',
+    unavailable: '비 오는 날이에요. 외출한다면 우산을 꼭 챙기세요.',
+  },
+  thunder: {
+    alt: '천둥 번개가 치는 날 대피 장소로 걷는 사람',
+    available: '천둥 예보 시간은 피하고, 안전한 시간대에만 걸으세요.',
+    unavailable: '천둥·번개 예보가 있어요. 산책 대신 실내에 머물러 주세요.',
+  },
+  snow: {
+    alt: '눈 내리는 겨울 공원을 걷는 사람',
+    available: '눈 예보 시간은 피하고 미끄럽지 않은 신발을 준비하세요.',
+    unavailable: '눈길이 미끄러울 수 있어요. 오늘 산책은 쉬어가세요.',
+  },
+  hail: {
+    alt: '우박이 내리는 날 대피 장소로 걷는 사람',
+    available: '우박 예보 시간은 피하고 실내 대피 장소를 확인하세요.',
+    unavailable: '우박 예보가 있어요. 안전을 위해 실내에 머물러 주세요.',
+  },
+}
+
+const weatherCopy = computed(() => WEATHER_COPY[props.weatherType] ?? WEATHER_COPY.sunny)
 </script>
 
 <template>
@@ -46,28 +81,25 @@ defineProps({
     eyebrow="WALK WINDOW"
     icon="🚶"
   >
+    <!-- 현재 강수 종류에 맞는 실제 사진을 모든 추천 상태에서 공통으로 보여준다. -->
+    <div class="image-slot">
+      <img :src="image" :alt="weatherCopy.alt" />
+    </div>
+
     <!-- 걷기 좋은 시간이 하나라도 있을 때 -->
     <template v-if="availableHours.length">
-      <div class="image-slot">
-        <img v-if="walkImage" :src="walkImage" alt="산책 추천" />
-        <span v-else aria-label="산책 이미지 영역"></span>
-      </div>
-      <p>비 걱정 없이 걷기 좋은 시간이에요.</p>
+      <p>{{ weatherCopy.available }}</p>
       <!-- 시간 칩: 윗줄 시각(도시 timezone 기준), 아랫줄 기온·날씨 -->
       <div class="time-list">
         <span v-for="hour in availableHours" :key="hour.dt">
           <strong>{{ formatHour(hour.dt, city.timezone) }}</strong>
-          {{ hour.temp }}℃ · {{ hour.status }}
+          {{ displayTemperature(hour.temp) }}{{ unitSymbol }} · {{ hour.status }}
         </span>
       </div>
     </template>
     <!-- 걷기 좋은 시간이 없을 때 (예: 수원 종일 비) -->
     <template v-else>
-      <div class="image-slot empty">
-        <img v-if="stayHomeImage" :src="stayHomeImage" alt="실내 휴식 추천" />
-        <span v-else aria-label="실내 휴식 이미지 영역"></span>
-      </div>
-      <p class="danger-message">밖은 위험해.. 이불 속에 숨기</p>
+      <p class="danger-message">{{ weatherCopy.unavailable }}</p>
     </template>
   </BaseDashboardCard>
 </template>
@@ -80,26 +112,26 @@ defineProps({
   height:100% 로 왼쪽 패널과 높이를 맞춘다.
 */
 .walk-panel {
-  --card-bg: linear-gradient(140deg, rgba(230, 247, 238, 0.9), rgba(232, 245, 255, 0.78));
+  --card-bg: linear-gradient(140deg, var(--surface-glass), rgba(87, 176, 255, 0.18));
   --card-heading-margin: 0;
-  --card-icon-bg: rgba(255, 255, 255, 0.72);
+  --card-icon-bg: var(--surface-card);
   height: 100%;
 }
 
 /* 걷기 좋은 시간이 없을 때 — 배경을 회보라로 바꿔 "오늘은 실내" 분위기를 준다 */
 .walk-panel.danger {
-  --card-bg: linear-gradient(140deg, rgba(245, 241, 247, 0.92), rgba(236, 240, 246, 0.85));
+  --card-bg: linear-gradient(140deg, var(--surface-glass), rgba(126, 106, 168, 0.2));
 }
 
-/* 일러스트 자리 — 헤더 바로 아래 가로 띠.
-   이미지가 아직 없어 점선 테두리의 빈 박스로 보인다 */
+/* 산책 사진 — 가로 카드 비율을 유지하되 모바일에서도 지나치게 커지지 않는다. */
 .image-slot {
-  height: 54px;
+  height: clamp(130px, 17vw, 180px);
   margin: 15px 0 10px;
   overflow: hidden;
-  border: 1px dashed rgba(76, 137, 106, 0.25);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.28);
+  border: 1px solid var(--border-soft);
+  border-radius: 16px;
+  background: var(--surface-soft);
+  box-shadow: var(--shadow-card);
 }
 
 /* 이미지가 들어오면 자리를 꽉 채우고 넘치는 부분은 잘라낸다 */
@@ -107,13 +139,6 @@ defineProps({
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-/* 이미지가 없을 때의 빈 자리표시자 */
-.image-slot span {
-  display: block;
-  width: 100%;
-  height: 100%;
 }
 
 /* 안내 문구 — 일러스트 아래 */
@@ -132,10 +157,10 @@ p {
 
 /* 시간 칩 하나 — 반투명 흰 배경. 그라디언트 위에서 떠 보이게 흰 테두리 */
 .time-list span {
-  border: 1px solid rgba(255, 255, 255, 0.75);
+  border: 1px solid var(--border-soft);
   border-radius: 10px;
   padding: 8px 10px;
-  background: rgba(255, 255, 255, 0.58);
+  background: var(--surface-soft);
   color: var(--ink-500);
   font-size: 0.67rem;
 }

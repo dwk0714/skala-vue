@@ -6,7 +6,7 @@
     계산은 utils/indices/ 의 순수 함수들이 이미 끝냈고, 여기서는 표시만 한다.
     지수 종류를 알지 못하며, 어떤 지수가 와도 같은 방식으로 렌더한다.
 
-  부모:  IndexGrid.vue — indices 배열을 v-for로 돌며 이 카드를 렌더
+  부모:  IndexGrid.vue — indices 배열을 v-for로 돌며 이 카드를 렌더한다
   자식:  없음
 
   선택 필드 두 개:
@@ -27,6 +27,9 @@ import { computed } from 'vue'
  *   - level  'high' | 'mid' | 'low' | 'none' — 카드 색상과 뱃지에 쓰인다
  */
 const props = defineProps({ index: { type: Object, required: true } })
+const levelType = computed(
+  () => ({ high: 'success', mid: 'warning', low: 'danger', none: 'info' })[props.index.level],
+)
 
 /**
  * 손세차 지수의 "다음 비" 안내 문구를 만든다.
@@ -52,10 +55,12 @@ const rainMessage = computed(() => {
     <!-- 카드 최상단: 좌측 지수 아이콘 / 우측 등급 뱃지 -->
     <div class="index-heading">
       <span class="index-icon">{{ index.icon }}</span>
-      <span class="index-level">{{ index.level }}</span>
+      <ElTag class="index-level" :type="levelType" round>{{ index.level }}</ElTag>
     </div>
 
-    <h3>{{ index.label }}</h3>
+    <ElTooltip :content="index.message" placement="top">
+      <h3>{{ index.label }}</h3>
+    </ElTooltip>
 
     <!-- 점수 줄: 좌측 큰 숫자 / 우측 "/ 100" -->
     <div class="score-line">
@@ -63,8 +68,14 @@ const rainMessage = computed(() => {
       ><span>/ 100</span>
     </div>
 
-    <!-- 게이지 — 점수를 그대로 막대 너비(%)로 쓴다 -->
-    <div class="score-track"><span :style="{ width: `${index.score}%` }"></span></div>
+    <!-- Element Plus Progress가 0~100 점수를 시각화한다 -->
+    <ElProgress
+      class="score-progress"
+      :percentage="index.score"
+      :show-text="false"
+      :stroke-width="7"
+      color="var(--level-color)"
+    />
 
     <p>{{ index.message }}</p>
 
@@ -75,7 +86,9 @@ const rainMessage = computed(() => {
 
     <!-- 야외활동 전용: 추천 활동 칩 -->
     <div v-if="index.activities" class="activity-list">
-      <span v-for="activity in index.activities" :key="activity">{{ activity }}</span>
+      <ElTag v-for="activity in index.activities" :key="activity" size="small" round>{{
+        activity
+      }}</ElTag>
     </div>
   </article>
 </template>
@@ -94,6 +107,7 @@ const rainMessage = computed(() => {
   padding: 18px;
   background: var(--surface-card);
   box-shadow: var(--shadow-card);
+  backdrop-filter: blur(18px) saturate(135%);
 }
 
 /* 등급별 강조색 — 초록(high) → 노랑(mid) → 주황(low) → 회색(none) */
@@ -123,16 +137,12 @@ const rainMessage = computed(() => {
   height: 38px;
   place-items: center;
   border-radius: 12px;
-  background: color-mix(in srgb, var(--level-color) 13%, white);
+  background: color-mix(in srgb, var(--level-color) 18%, var(--surface-card));
   font-size: 1.2rem;
 }
 
 /* 등급 뱃지(high/mid/low/none) — 카드 우측 상단 알약. 글자색이 곧 강조색 */
 .index-level {
-  border-radius: 999px;
-  padding: 4px 8px;
-  background: color-mix(in srgb, var(--level-color) 12%, white);
-  color: var(--level-color);
   font-size: 0.62rem;
   font-weight: 850;
   text-transform: uppercase;
@@ -157,21 +167,13 @@ h3 {
   font-size: 0.7rem;
 }
 
-/* 게이지 홈 — 점수 줄 아래 가로 막대. 배경은 연회색 */
-.score-track {
-  height: 7px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--surface-muted);
+/* 점수 게이지 — Element Plus Progress의 바탕을 카드 토큰에 맞춘다 */
+.score-progress {
+  margin-top: 2px;
 }
 
-/* 게이지 채움 — 강조색. 점수가 바뀌면 0.35초에 걸쳐 늘어난다 */
-.score-track span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--level-color);
-  transition: width 0.35s ease;
+:deep(.score-progress .el-progress-bar__outer) {
+  background: var(--surface-muted);
 }
 
 /* 지수 문구(예: "오늘 손세차 각") — 게이지 아래.
@@ -204,11 +206,7 @@ small.rain {
 }
 
 /* 활동 칩 하나 — 아주 연한 초록 배경 + 진초록 글자 */
-.activity-list span {
-  border-radius: 999px;
-  padding: 3px 7px;
-  background: var(--primary-050);
-  color: var(--primary-700);
+.activity-list .el-tag {
   font-size: 0.6rem;
 }
 </style>

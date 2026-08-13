@@ -42,15 +42,27 @@ const hour = (date, time, temp, status = '맑음', pop = 0) => ({
 })
 const day = (date, pop) => ({ dt: epoch(`${date}T12:00:00+09:00`), pop })
 
-const makeWeather = (id, current, hourly, forecast) => ({
-  ...city(id),
-  timezone: TIMEZONE,
-  ...current,
-  forecast,
-  hourly,
-  updatedAt: new Date(UPDATED_AT_MS).toISOString(),
-  isFavorite: false,
-})
+const makeWeather = (id, current, hourly, forecast) => {
+  const todayTemps = hourly.map((item) => item.temp)
+  const todayMin = Math.min(...todayTemps)
+  const todayMax = Math.max(...todayTemps)
+
+  return {
+    ...city(id),
+    timezone: TIMEZONE,
+    ...current,
+    /* Mock도 API와 같은 일별 계약을 갖도록 기온 범위와 읽기 쉬운 상태를 보완한다. */
+    forecast: forecast.map((item, index) => ({
+      ...item,
+      tempMin: index === 0 ? todayMin : current.temp - 3 + (index % 3),
+      tempMax: index === 0 ? todayMax : current.temp + 2 + (index % 3),
+      status: item.pop >= 0.6 ? '비' : item.pop >= 0.3 ? '흐림' : '맑음',
+    })),
+    hourly,
+    updatedAt: new Date(UPDATED_AT_MS).toISOString(),
+    isFavorite: false,
+  }
+}
 
 export const WEATHER_MOCK = [
   makeWeather(

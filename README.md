@@ -1,240 +1,616 @@
-# Weather Walk — 오늘, 걷기 좋은 날인가요?
+# Weather Walk
 
-Vue 3 핵심 개념(`v-for` / `v-if` / 양방향 바인딩 / 이벤트 수식어 / 반응성 추적 / 컴포넌트 분리)을 학습하기 위한 날씨 대시보드입니다.
-단순히 기온을 나열하는 대신, **날씨 데이터를 일상 언어로 번역하는 생활 지수 5종**과 **산책 가능 시간 · 외출 준비물 추천**을 제공합니다.
+> 오늘, 어느 도시의 날씨가 좋을까요?
 
-현재는 국내 8개 도시의 **Mock 데이터**로 동작하며, OpenWeather API 연동 코드는 이미 작성되어 환경변수 한 줄로 전환할 수 있습니다. (아래 [데이터 소스 전환](#데이터-소스-전환) 참고)
+**Current release: v1.0.0**
+
+Weather Walk는 국내 도시의 날씨를 단순한 숫자로 보여주는 데서 끝나지 않고,
+**“오늘 걸어도 될까?”, “무엇을 챙겨야 할까?”, “어느 도시가 외출하기 더 좋을까?”**처럼 일상에서 바로 사용할 수 있는 정보로 바꾸어 보여주는 Vue 3 날씨 대시보드입니다.
+
+OpenWeather의 실시간 날씨를 조회할 수 있으며, API Key가 없어도 준비된 Mock 데이터로 전체 기능을 실행할 수 있습니다. 지역별 날씨, 상세 예보, 생활 지수, 산책 추천, 외출 브리핑, 날씨별 음악 추천, 즐겨찾기와 도시 날씨 대결까지 한 프로젝트 안에서 확인할 수 있습니다.
+
+---
+
+## 목차
+
+- [프로젝트 소개](#프로젝트-소개)
+- [주요 기능](#주요-기능)
+- [빠른 시작](#빠른-시작)
+- [환경변수와 데이터 소스 설정](#환경변수와-데이터-소스-설정)
+- [화면과 Route 구성](#화면과-route-구성)
+- [기능 구현 상세](#기능-구현-상세)
+- [생활 날씨 지수 계산](#생활-날씨-지수-계산)
+- [도시 대결 규칙](#도시-대결-규칙)
+- [데이터 구조와 처리 흐름](#데이터-구조와-처리-흐름)
+- [Pinia Store](#pinia-store)
+- [프로젝트 구조](#프로젝트-구조)
+- [기술 스택](#기술-스택)
+- [Vue 학습 요소](#vue-학습-요소)
+- [테스트와 코드 검사](#테스트와-코드-검사)
+- [v1.0 배포 안내](#v10-배포-안내)
+- [문제 해결](#문제-해결)
+- [현재 저장 정책과 제한 사항](#현재-저장-정책과-제한-사항)
+
+---
+
+## 프로젝트 소개
+
+이 프로젝트는 Vue 수업에서 배운 기능을 하나씩 확장하여 만든 날씨 서비스입니다.
+
+초기에는 배열을 순회해 도시 카드를 출력하고, 조건에 따라 “더움/선선함”을 나누는 과제로 시작했습니다. 이후 Composition API, 컴포넌트 통신, Pinia, Vue Router, Axios, Element Plus, 외부 API 연동을 적용하면서 현재의 멀티 페이지 대시보드 구조로 발전했습니다.
+
+프로젝트가 중요하게 생각하는 기준은 다음과 같습니다.
+
+1. **날씨를 행동으로 번역합니다.**
+   기온과 강수확률만 나열하지 않고 산책 시간, 외출 준비물, 생활 지수와 음악을 추천합니다.
+
+2. **Mock과 실 API가 같은 화면을 사용합니다.**
+   Provider와 Mapper를 분리하여 데이터 출처가 바뀌어도 View와 컴포넌트를 수정하지 않습니다.
+
+3. **외부 API 응답을 앱 내부에 그대로 퍼뜨리지 않습니다.**
+   OpenWeather 응답은 고정된 내부 날씨 모델로 변환한 뒤 Store와 UI에 전달합니다.
+
+4. **공유 상태와 화면 전용 상태를 구분합니다.**
+   도시, 검색, 선택, 즐겨찾기와 설정은 Pinia가 관리하고, 도시 대결의 두 선택값과 운세 팝업 상태는 해당 View와 컴포넌트에만 둡니다.
+
+5. **계산식은 UI에서 분리합니다.**
+   생활 지수, 산책 시간, 준비물, 음악과 대결 결과는 Vue 컴포넌트가 아닌 순수 JavaScript 함수로 계산하며 Node 기본 테스트로 검증합니다.
 
 ---
 
 ## 주요 기능
 
-- **지역별 날씨 카드** — 국내 8개 도시(서울·수원·부산·울산·강릉·제주·광주·세종)를 카드 그리드로 렌더링
-- **기온 조건부 라벨** — 25℃ 기준 `☀ 더움` / `❄ 선선함` 뱃지 분기
-- **한글 도시 검색** — `:value` + `@input` 수동 바인딩으로 한글 IME 조합 중 입력 유실 방지
-- **검색 결과 패널** — 카탈로그 별칭 매칭(`제주도`, `ULSAN` 등) 후 결과 카드에서 도시 추가
-- **최근 검색어 태그** — 최대 5개 유지, 중복 제거, 개별 삭제
-- **생활 지수 5종** — 손세차 · 야외활동 · 얼죽아 · 붕어빵 · 모기 출현 (점수 0~100 + 등급 + 문구)
-- **손세차 다음 비 예보** — 향후 예보에서 첫 강수일을 찾아 안내, 없으면 `비는 문제 없음!`
-- **산책 추천 시간** — 시간대별 예보에서 걷기 좋은 구간만 추출, 없으면 대체 문구 표시
-- **외출 준비물 추천** — 기온·강수·미세먼지·풍속·습도 조건별 준비물 목록 생성
-- **즐겨찾기 토글** — 카드의 ★ 버튼, 버블링 차단으로 카드 선택과 분리
-- **상대 시간 표기** — `20분 전 업데이트`, 1분 간격 자동 갱신
-- **반응형 상태 추적 로그** — `watch` 5종 + `watchEffect`가 상태 변화를 콘솔과 화면 패널에 동시 기록
-- **요약 지표** — 도시 수 · 평균 기온 · 최고 기온 도시 · 즐겨찾기 수 · 산책 추천 1위
-- **로딩 / 에러 / 빈 결과 상태 처리** 및 반응형 그리드 레이아웃
+### 날씨 조회
+
+- 서울·수원·부산·울산·강릉·제주·광주·세종 8개 국내 도시 제공
+- OpenWeather Current Weather API 기반 현재 날씨 조회
+- OpenWeather 5 day / 3 hour Forecast 기반 시간대별·일별 예보
+- Air Pollution API 기반 PM10 미세먼지 표시
+- 도시명·행정명·영문 별칭 검색
+- 국내 도시만 허용하는 Geocoding 검색
+- 검색 결과에서 도시를 동적으로 추가
+- 동일 ID 또는 동일 좌표 도시의 중복 추가 방지
+- 즐겨찾기 도시 전용 화면
+
+### 생활 정보
+
+- 손세차 지수
+- 야외활동 지수
+- 얼죽아 지수
+- 붕어빵 지수
+- 모기 출현 지수
+- 오늘의 외출 브리핑
+- 날씨에 맞는 외출 준비물
+- 산책하기 좋은 시간대
+- 맑음·비·눈·천둥·우박에 맞는 산책 이미지
+- 날씨와 도시 현지 시간대에 맞춘 Spotify 음악 추천
+
+### 상세 예보
+
+- 현재 기온과 체감 기온
+- 습도, 풍속, 강수확률
+- PM10 수치와 5단계 상태
+- 위도와 경도
+- 도시 현지 날짜 기준 오늘 03:00~24:00 예보
+- 최대 5일간의 최저·최고 기온과 대표 날씨
+
+### 사용자 설정과 UI
+
+- 전역 섭씨/화씨 전환
+- 전역 라이트/다크 모드 전환
+- Element Plus Skeleton, Result, Empty, Dialog, DatePicker, Select 등 활용
+- 로딩·오류·빈 결과 상태 분리
+- 데스크톱·태블릿·모바일 반응형 레이아웃
+- Glass UI를 기본으로 사용하고 도시 대결 화면에는 별도 레이싱 디자인 적용
+- 모든 View Lazy Loading
+- Catch-all 404 Route
+
+### 미니게임
+
+- 두 도시의 생활 지수 5종 비교
+- 지수별 라운드 승자와 최종 승리 도시 표시
+- 모기 지수는 낮은 도시가 승리하고 종합점수에서는 감점 요소로 계산
+- 양쪽 도시의 상세 날씨 페이지로 이동
+- 생년월일 기반 Mock “오늘의 레이스 운세” 팝업
+
+---
+
+## 빠른 시작
+
+### 1. 실행 환경 확인
+
+이 프로젝트는 다음 Node.js 버전을 지원합니다.
+
+```text
+Node.js 20.19 이상
+또는 Node.js 22.12 이상
+```
+
+버전을 확인합니다.
+
+```bash
+node -v
+npm -v
+```
+
+### 2. 저장소 내려받기
+
+```bash
+git clone https://github.com/dwk0714/skala-vue.git
+cd skala-vue
+```
+
+이미 프로젝트 폴더가 있다면 해당 폴더에서 다음 단계부터 진행하면 됩니다.
+
+### 3. 패키지 설치
+
+```bash
+npm install
+```
+
+### 4. API 없이 Mock 모드로 실행
+
+환경변수 파일을 만들지 않으면 기본값인 Mock 모드로 동작합니다.
+
+```bash
+npm run dev
+```
+
+Vite 설정에 `--host`가 포함되어 있으므로 터미널에는 보통 다음과 같이 표시됩니다.
+
+```text
+Local:   http://localhost:5173/
+Network: http://현재-IP:5173/
+```
+
+브라우저에서 Local 주소를 열면 됩니다. 5173 포트를 이미 다른 프로그램이 사용 중이면 Vite가 5174처럼 다음 포트를 자동으로 사용할 수 있으므로 터미널에 출력된 주소를 확인하세요.
+
+### 5. 실시간 OpenWeather 모드로 실행
+
+안전한 예시 파일을 복사해 `.env.local`을 만듭니다.
+
+```bash
+cp .env.example .env.local
+```
+
+복사한 `.env.local`을 열어 다음 값을 입력합니다.
+
+```dotenv
+VITE_WEATHER_SOURCE=openweather
+VITE_OPENWEATHER_KEY=발급받은_API_KEY
+```
+
+개발 서버가 실행 중이었다면 환경변수를 다시 읽도록 종료 후 재실행합니다.
+
+```bash
+npm run dev
+```
+
+---
+
+## 환경변수와 데이터 소스 설정
+
+### Mock 모드
+
+API Key 없이 안정적으로 모든 화면과 계산 결과를 확인하고 싶을 때 사용합니다.
+
+```dotenv
+VITE_WEATHER_SOURCE=mock
+VITE_OPENWEATHER_KEY=
+```
+
+또는 `.env.local` 파일을 만들지 않아도 `mock`이 기본값으로 선택됩니다.
+
+Mock 데이터는 단순히 같은 값을 복사한 데이터가 아닙니다. 도시별로 비, 바람, 습도와 기온을 다르게 배치하여 생활 지수의 `high`, `mid`, `low`, `none` 분기가 실제 화면에서 보이도록 구성했습니다.
+
+### OpenWeather 모드
+
+```dotenv
+VITE_WEATHER_SOURCE=openweather
+VITE_OPENWEATHER_KEY=발급받은_API_KEY
+```
+
+사용하는 OpenWeather API는 다음과 같습니다.
+
+| 목적           | Endpoint                  |
+| -------------- | ------------------------- |
+| 도시 검색      | `/geo/1.0/direct`         |
+| 현재 날씨      | `/data/2.5/weather`       |
+| 5일·3시간 예보 | `/data/2.5/forecast`      |
+| 대기오염       | `/data/2.5/air_pollution` |
+
+날씨 요청에는 공통으로 다음 값이 전달됩니다.
+
+```text
+lat={위도}
+lon={경도}
+units=metric
+lang=kr
+appid={API_KEY}
+```
+
+도시명을 날씨 API에 직접 전달하지 않고, 카탈로그 또는 Geocoding으로 찾은 **위도와 경도**를 사용합니다.
+
+### 왜 `.env.local`을 사용하나요?
+
+- 개인 API Key를 Git에 올리지 않기 위해서입니다.
+- `.env.local`은 `.gitignore`에 포함되어 있습니다.
+- `VITE_` 접두사가 붙은 값은 브라우저 번들에서 읽을 수 있습니다.
+
+> 주의: Vite의 `VITE_` 환경변수는 브라우저에서 완전히 숨겨지는 서버 비밀값이 아닙니다. 이 프로젝트에서는 수업용 OpenWeather Key만 사용하며, 결제·개인정보·관리자 권한과 관련된 비밀 Key는 백엔드 프록시에서 관리해야 합니다.
+
+---
+
+## 화면과 Route 구성
+
+모든 View는 동적 `import()`를 사용해 필요한 페이지에 진입할 때 불러옵니다.
+
+| URL                | Route name          | View                   | 설명                                       |
+| ------------------ | ------------------- | ---------------------- | ------------------------------------------ |
+| `/`                | `weather-landing`   | `WeatherLandingView`   | 도시 카드를 바로 불러오지 않는 서비스 랜딩 |
+| `/weather`         | `weather-home`      | `WeatherHomeView`      | 도시 검색과 지역별 날씨 카드               |
+| `/weather/:cityId` | `weather-detail`    | `WeatherDetailView`    | 도시 ID 기반 현재 관측·시간대별·일별 예보  |
+| `/indices`         | `weather-indices`   | `WeatherIndicesView`   | 선택 도시의 생활 지수와 외출 추천          |
+| `/favorites`       | `weather-favorites` | `WeatherFavoritesView` | 즐겨찾기 도시 목록                         |
+| `/battle`          | `weather-battle`    | `WeatherBattleView`    | 두 도시의 생활 지수 대결과 운세 팝업       |
+| `/about`           | `weather-about`     | `WeatherAboutView`     | 서비스 기능 소개                           |
+| 그 외 경로         | `not-found`         | `NotFoundView`         | Catch-all 404 화면                         |
+
+### 화면 이동 흐름
+
+- 상단 브랜드 `Weather Walk` → 랜딩 페이지
+- `지역 날씨` → 검색과 도시 카드
+- 도시 카드 본문 클릭 → 해당 도시 선택 후 생활 지수
+- 카드의 `상세보기` → 해당 도시 상세 예보
+- 카드의 별 버튼 → 현재 페이지에 머물며 즐겨찾기 토글
+- `도시 대결` → 도시 두 곳을 선택하는 미니게임
+
+카드 안의 상세보기와 즐겨찾기에는 `@click.stop`을 사용합니다. 따라서 별 버튼만 눌렀는데 생활 지수 페이지로 이동하는 이벤트 버블링 문제를 막습니다.
 
 ---
 
 ## 기능 구현 상세
 
-### 지역별 날씨 카드
+### 1. 지역 날씨와 점진적 로딩
 
-`WeatherParent`가 `filteredCities`를 `v-for`로 순회하고 `:key="city.id"`를 바인딩합니다. 카드들은 `BaseDashboardCard`의 슬롯 안에 놓이지만, 슬롯 콘텐츠는 부모 스코프에서 컴파일되므로 `WeatherCard`는 `WeatherParent`와 직접 props/emit을 주고받습니다.
+실 API 모드에서 첫 화면이 24개 요청을 모두 기다리지 않도록 로딩을 두 단계로 나눴습니다.
 
-카드 클릭 시 카드 헤더 우측의 상태 메시지가 `"{도시}이(가) 선택되었습니다."`로 바뀌며, 선택된 카드에는 `selected` 클래스가 붙습니다. 검색 결과가 0건이면 카드 그리드 대신 안내 블록(`v-else`)이 노출됩니다.
+#### 최초 지역 날씨 화면
 
-### 한글 도시 검색
+8개 도시에 대해 현재 날씨 API만 요청합니다.
 
-`SearchBar`는 `v-model`을 직접 쓰지 않고 `:value` / `@input`으로 나눠 처리합니다.
-
-```vue
-<input
-  :value="modelValue"
-  type="search"
-  @input="emit('update-query', $event.target.value)"
-/>
+```text
+8개 도시 × Current Weather 1회 = 8개 요청
 ```
 
-부모(`WeatherParent`)는 `@update-query="searchQuery = $event"`로 받고, `watch(searchQuery, ...)`가 스토어의 검색을 트리거합니다. 검색은 **300ms 디바운스** 후 실행되며, 이전 요청은 `AbortController`로 취소합니다.
+요청은 `Promise.allSettled()`로 실행되며, 먼저 완료된 도시는 `onCity` 콜백을 통해 즉시 Store에 들어갑니다. 일부 도시 요청이 실패해도 성공한 도시 카드는 유지됩니다.
 
-로컬 카탈로그 매칭은 `aliases` 배열 기반이라 `서울시`, `제주도`, `ulsan` 같은 표기도 잡습니다.
+#### 상세 또는 생활 지수 진입
+
+선택한 도시 한 곳에 대해서만 다음 두 요청을 병렬로 실행합니다.
+
+```text
+Forecast + Air Pollution = 2개 요청
+```
+
+같은 도시의 상세 요청이 동시에 발생하면 `detailRequests` Map에 진행 중 Promise를 보관하여 중복 호출을 막습니다.
+
+#### 검색으로 새 도시 추가
+
+새 도시는 현재 날씨, 예보, 대기오염을 모두 받아야 카드와 지수 화면을 바로 사용할 수 있으므로 세 요청을 병렬로 실행합니다.
+
+### 2. 국내 도시 검색
+
+검색 흐름은 다음 순서로 처리됩니다.
+
+1. 검색어 앞뒤 공백을 제거하고 연속 공백을 정리합니다.
+2. 한글과 영문 비교를 위해 소문자로 정규화합니다.
+3. 국내 도시 카탈로그의 이름과 별칭을 먼저 검색합니다.
+4. 카탈로그에 있으면 저장된 좌표를 사용해 API 호출을 줄입니다.
+5. 카탈로그에 없으면 OpenWeather Geocoding API로 검색합니다.
+6. 응답에서 `country === 'KR'`인 결과만 남깁니다.
+7. 한글 이름은 `local_names.ko`를 우선합니다.
+8. 좌표를 소수점 네 자리로 정규화해 안정적인 ID를 만듭니다.
+9. 사용자가 결과를 선택한 뒤에만 날씨를 요청해 카드에 추가합니다.
+
+초기 카탈로그는 다음 도시를 포함합니다.
+
+| 도시 | 기준 행정구역  | 지원 별칭 예시                             |
+| ---- | -------------- | ------------------------------------------ |
+| 서울 | 서울특별시     | 서울, 서울시, 서울특별시, Seoul            |
+| 수원 | 수원시         | 수원, 수원시, Suwon                        |
+| 부산 | 부산광역시     | 부산, 부산시, 부산광역시, Busan            |
+| 울산 | 울산광역시     | 울산, 울산시, 울산광역시, Ulsan            |
+| 강릉 | 강릉시         | 강릉, 강릉시, Gangneung                    |
+| 제주 | 제주시         | 제주, 제주시, 제주도, 제주특별자치도, Jeju |
+| 광주 | 광주광역시     | 광주, 광주시, 광주광역시, Gwangju          |
+| 세종 | 세종특별자치시 | 세종, 세종시, 세종특별자치시, Sejong       |
+
+`광주`는 광주광역시, `제주`는 제주시를 기본으로 해석합니다. 동명 지역은 검색 결과에 `state`와 좌표를 함께 표시하여 구분합니다.
+
+검색은 300ms 디바운스를 적용하며 새 검색이 시작되면 이전 `AbortController` 요청을 취소합니다. 최근 검색어는 중복을 제거하고 최신순 최대 5개까지만 유지합니다.
+
+검색 결과가 없을 때는 불필요한 빈 패널이나 “일치하는 도시가 없습니다” 박스를 남기지 않고 결과 패널 자체를 닫습니다.
+
+### 3. 도시 상세 날씨
+
+상세 페이지에 직접 접근하거나 새로고침해도 Store의 `loadCities()`를 먼저 실행한 뒤 Route의 `cityId`와 일치하는 도시를 찾습니다.
+
+현재 관측 영역에서 다음 정보를 제공합니다.
+
+- 현재 기온
+- 체감 기온
+- 습도
+- 풍속
+- 강수확률
+- PM10 수치와 상태
+- 위도와 경도
+- API 관측 업데이트 시각
+
+#### 오늘 시간대별 예보
+
+도시 현지 날짜를 기준으로 다음 8개 슬롯을 표시합니다.
+
+```text
+03:00 / 06:00 / 09:00 / 12:00 / 15:00 / 18:00 / 21:00 / 24:00
+```
+
+OpenWeather는 현재 시점 이후의 데이터만 반환하므로 이미 지난 시간은 “예보 종료” 상태로 표시될 수 있습니다. `24:00`은 다음 날 `00:00` 데이터를 오늘의 마지막 슬롯으로 표현한 값입니다.
+
+#### 5일 일별 예보
+
+3시간 간격 Forecast를 도시의 현지 날짜별로 묶고 다음 값을 계산합니다.
+
+- 해당 날짜의 최저 기온
+- 해당 날짜의 최고 기온
+- 해당 날짜 중 가장 높은 강수확률
+- 눈·뇌우·비처럼 외출에 영향이 큰 상태를 우선한 대표 날씨
+
+UI에는 최대 5일까지만 표시하지만, 계산 함수 자체는 배열 길이를 하드코딩하지 않습니다.
+
+### 4. PM10 미세먼지
+
+OpenWeather Air Pollution 응답의 `components.pm10`을 사용합니다. 원본 소수값은 계산에 유지하고 화면에는 반올림한 정수와 상태를 함께 보여줍니다.
+
+| PM10     | 표시      |
+| -------- | --------- |
+| 0~15     | 매우 좋음 |
+| 16~30    | 좋음      |
+| 31~80    | 보통      |
+| 81~150   | 나쁨      |
+| 151 이상 | 매우 나쁨 |
+
+### 5. 섭씨와 화씨
+
+API와 Mock의 원본 기온은 항상 섭씨로 유지합니다. 생활 지수 계산도 섭씨 기준입니다.
+
+화씨는 화면에 표시할 때만 `useTemperature()` Composable에서 변환합니다.
 
 ```js
-export const searchCityCatalog = (query) => {
-  const normalized = normalizeCityQuery(query)
-  if (!normalized) return []
-  return KOREAN_CITY_CATALOG.filter((city) =>
-    city.aliases.some((alias) => normalizeCityQuery(alias).includes(normalized)),
-  )
-}
+fahrenheit = Math.round((celsius * 9) / 5 + 32)
 ```
 
-### 최근 검색어 태그
+따라서 단위를 바꾸어도 원본 날씨, 산책 가능 여부, 생활 지수 점수와 도시 대결 승자는 달라지지 않습니다.
 
-검색 제출 또는 결과 선택 시 `addRecentSearch`가 호출됩니다. 동일 검색어는 제거 후 맨 앞에 다시 넣어 **최신순 최대 5개**를 유지합니다.
+### 6. 오늘의 외출 브리핑
+
+선택한 도시의 날씨를 짧은 행동 문장으로 변환합니다.
+
+- 우박 → 안전한 실내 활동 권장
+- 천둥·번개 → 야외 활동 연기 권장
+- 눈 → 미끄러운 길과 이동 시간 주의
+- 비 → 야외 일정을 짧게 조정
+- 맑음 → 산책 가능한 시간 수 안내
+
+문장 뒤에는 실제 추천 준비물 이름을 함께 표시합니다.
+
+### 7. 외출 준비물
+
+옷차림은 항상 하나 이상 포함되며 나머지 준비물은 조건에 맞을 때 추가됩니다.
+
+| 준비 항목 | 조건                               |
+| --------- | ---------------------------------- |
+| 옷차림    | 기온에 따라 항상 포함              |
+| 우산      | `pop >= 0.3`                       |
+| 마스크    | `pm10 >= 50`                       |
+| 물        | `temp >= 25` 또는 `humidity >= 70` |
+| 바람막이  | `windSpeed > 8`                    |
+
+### 8. 산책 추천 시간과 이미지
+
+다음 조건을 모두 만족하는 시간만 추천합니다.
 
 ```js
-recentSearches.value = [value, ...recentSearches.value.filter((item) => item !== value)].slice(0, 5)
+hour.pop === 0 && hour.temp >= 15 && hour.temp <= 26 && 강수_상태_키워드가_없음
 ```
 
-태그 본문 클릭은 재검색, `×` 클릭은 개별 삭제입니다.
+강수 상태에는 비, 소나기, 이슬비, 뇌우, 천둥, 번개, 눈, 진눈깨비와 우박이 포함됩니다.
 
-> 현재 최근 검색어는 메모리 상태입니다. localStorage 영속화는 미구현.
+추천 가능한 시간이 없다면 안전 안내 문구를 표시합니다. 산책 패널의 배경 이미지는 현재 날씨와 시간대별 예보를 분석해 다음 중 하나를 선택합니다.
 
-### 이벤트 수식어
+- 맑은 날 산책
+- 우산을 쓴 비 오는 날 산책
+- 눈 오는 날
+- 천둥·번개가 있는 날
+- 우박이 있는 날
 
-카드 전체가 클릭 가능한 상태에서 내부 버튼이 부모 핸들러를 함께 트리거하지 않도록 `.stop`을 사용합니다.
+### 9. 오늘의 추천 음악
 
-```vue
-<button @click.stop="$emit('toggle-favorite', city)" @keydown.stop>★</button>
-<button @click.stop="$emit('click-detail', city)" @keydown.stop>상세보기 →</button>
-```
+날씨 상태와 도시의 현지 시간대를 함께 사용해 Spotify 플레이리스트를 추천합니다.
 
-- 검색 폼: `@submit.prevent`로 기본 제출 차단
-- 카드 키보드 접근: `@keydown.enter` / `@keydown.space.prevent`
-- 상세보기: `window.alert`로 도시명 · 날씨 · 기온 · 야외활동 지수 점수 출력
+날씨 그룹:
 
-### 산책 추천 시간
+- 맑음
+- 흐림·구름·안개
+- 비
+- 눈
+- 천둥·우박
 
-시간대별 예보에서 **강수확률 0 · 15~26℃ · 강수 키워드 미포함** 구간만 남깁니다.
+시간대 그룹:
 
-```js
-const RAIN_KEYWORDS = ['비', '소나기', '이슬비', '뇌우']
+- 아침: 05:00~11:59
+- 낮: 12:00~17:59
+- 저녁: 18:00~21:59
+- 밤: 22:00~04:59
 
-export const getWalkableHours = (hourly = []) =>
-  hourly.filter(
-    (hour) =>
-      hour.pop === 0 &&
-      hour.temp >= 15 &&
-      hour.temp <= 26 &&
-      !RAIN_KEYWORDS.some((keyword) => hour.status.includes(keyword)),
-  )
-```
+같은 도시와 같은 현지 날짜에는 첫 추천이 안정적으로 유지되도록 도시 ID와 날짜로 고정 순서를 만듭니다. 추천 목록은 로컬 JSON으로 관리하며 Spotify Embed로 재생합니다.
 
-해당 시간이 하나도 없으면 패널이 `danger` 상태로 바뀌며 `밖은 위험해.. 이불 속에 숨기` 문구를 표시합니다. (수원 Mock이 종일 비 시나리오)
+### 10. 즐겨찾기
 
-### 외출 준비물 추천
+도시 카드의 별 버튼으로 `isFavorite`을 전환합니다. `favoriteCities` Getter가 즐겨찾기 도시만 필터링하고 `/favorites`에서 렌더링합니다.
 
-기온 5단계로 옷차림을 정하고, 조건을 만족할 때만 항목을 추가합니다.
+즐겨찾기 카드의 본문과 상세보기는 도시 상세 페이지로 이동합니다. 즐겨찾기가 하나도 없으면 지역 날씨 페이지로 돌아가는 안내 링크를 표시합니다.
 
-| 항목 | 추가 조건 |
-| --- | --- |
-| 옷차림 | 항상 (≤5 두꺼운 외투 / ≤14 가벼운 코트 / ≤22 얇은 겉옷 / ≤27 가벼운 옷차림 / 그 외 통풍 잘되는 옷) |
-| ☂️ 우산 | 강수확률 ≥ 30% |
-| 😷 마스크 | 미세먼지 ≥ 50㎍/㎥ |
-| 💧 물 | 기온 ≥ 25℃ 또는 습도 ≥ 70% |
-| 🧥 바람막이 | 풍속 > 8m/s |
+> 현재 즐겨찾기는 Pinia 메모리 상태이며 새로고침하면 초기화됩니다.
+
+### 11. 오늘의 레이스 운세
+
+도시 대결 페이지의 “피트월 운세” 버튼으로 Element Plus Dialog를 엽니다.
+
+- 입력값: 생년월일 하나
+- 미래 날짜 선택 방지
+- 로컬 `fortuneMock.json`에서 결과 선택
+- 생년월일과 오늘 날짜를 조합한 간단한 시드 사용
+- 같은 생년월일과 같은 날짜에는 같은 결과 표시
+- 팝업을 닫으면 입력값과 결과 즉시 초기화
+- Pinia, Local Storage, URL, 외부 API에 생년월일을 저장하거나 전송하지 않음
+
+운세는 오락용 Mock 콘텐츠이며 실제 사주·점성술 API 결과가 아닙니다.
 
 ---
 
-## 계산 및 지수 로직
+## 생활 날씨 지수 계산
 
-모든 지수는 `src/utils/indices/`의 순수 함수이며 동일한 계약을 따릅니다.
+모든 생활 지수는 `src/utils/indices/`의 독립적인 순수 함수입니다.
 
-```js
-compute(weather) => { score: 0~100, level: 'high' | 'mid' | 'low' | 'none', message: string }
-```
-
-`carWash`는 `nextRain`, `outdoorActivity`는 `activities`를 추가로 반환합니다. UI는 이 선택 필드를 `v-if`로 분기합니다.
-
-### 🚗 손세차 지수
-
-기온 **10~25℃**를 적정 구간으로 두고, 다섯 가지 감점 요인을 합산합니다.
-
-| 요소 | 배점 | 규칙 |
-| --- | --- | --- |
-| 기온 | 30 | 10~25℃ 만점, 구간 밖은 1℃당 3점 감점 |
-| 강수확률 | 25 | `25 × (1 - pop)` |
-| 미세먼지 | 20 | ≤30: 20 / ≤50: 14 / ≤80: 7 / 그 외 0 |
-| 풍속 | 15 | ≤3: 15 / ≤6: 9 / ≤10: 4 / 그 외 0 |
-| 습도 | 10 | ≤60: 10 / ≤75: 6 / ≤85: 3 / 그 외 0 |
-
-여기에 **다음 비까지 남은 날짜**로 최종 보정합니다. 세차의 실제 판단 기준은 오늘 날씨가 아니라 "세차하고 며칠 버티느냐"이기 때문입니다.
-
-| 다음 비 | 보정 |
-| --- | --- |
-| 오늘 | 점수 0 (`세차하면 오늘 비 옴`) |
-| 내일 | 최대 20점으로 제한 |
-| 2일 뒤 | −20 |
-| 3일 뒤 | −10 |
-
-등급: 75↑ `오늘 손세차 각` / 50↑ `해볼 만함` / 25↑ `자동세차 추천` / 그 외 `오늘은 참기`
-
-#### 다음 비 예보
-
-예보 배열에서 강수확률이 **임계치(기본 0.6) 이상인 가장 이른 날 하나**를 찾습니다. 배열 길이를 하드코딩하지 않으므로 예보 기간이 5일이든 8일이든 그대로 동작합니다.
+공통 계약은 다음과 같습니다.
 
 ```js
-export const findNextRain = (weather, threshold = 0.6) => {
-  const hit = weather.forecast?.find((item) => item.pop >= threshold)
-  if (!hit) return null
-  // ... 도시 timezone 기준 일수 차 계산
-  return { ...hit, daysFromNow }
+{
+  id,
+  label,
+  icon,
+  compute(weather) {
+    return {
+      score: 0,
+      level: 'high' | 'mid' | 'low' | 'none',
+      message: '',
+    }
+  },
 }
 ```
 
-카드 하단 출력:
+`IndexGrid`는 `INDICES` 레지스트리를 `v-for`로 렌더링합니다. 새로운 지수는 계산 파일을 하나 추가하고 레지스트리에 등록하면 되므로 View와 카드 컴포넌트를 수정할 필요가 없습니다.
 
-- 비 예보 있음 → `오늘 / 내일 / N일 뒤 비 예보 80%`
-- 예보 기간 내 강수 없음 → **`비는 문제 없음!`**
+### 손세차 지수
 
-### 🌳 야외활동 지수
+기온, 현재 강수확률, PM10, 풍속, 습도를 합산하고 다음 비 예보로 추가 보정합니다.
 
-100점에서 시작해 조건별로 차감합니다.
+| 요소 | 최대 배점 | 계산                                    |
+| ---- | --------: | --------------------------------------- |
+| 기온 |        30 | 10~25℃ 만점, 범위 밖은 1℃당 3점 감점    |
+| 강수 |        25 | `25 × (1 - pop)`                        |
+| PM10 |        20 | 30 이하 20점, 50 이하 14점, 80 이하 7점 |
+| 풍속 |        15 | 3m/s 이하 15점, 6 이하 9점, 10 이하 4점 |
+| 습도 |        10 | 60% 이하 10점, 75 이하 6점, 85 이하 3점 |
 
-| 요소 | 감점 |
-| --- | --- |
-| 기온 | 15℃ 미만 또는 26℃ 초과 시 1℃당 4점 (최대 35) |
-| 강수확률 | `pop × 40` |
-| 미세먼지 | >80: 30 / >50: 20 / >30: 10 |
-| 풍속 | >10: 20 / >6: 10 |
-| 습도 | >85: 10 / >70: 5 |
+다음 비의 강수확률 기준은 60%입니다.
 
-등급별로 추천 활동 배열(`산책`, `러닝`, `피크닉` …)을 함께 반환하며, 카드 안에서 `v-for`로 칩 렌더링됩니다. 이 지수의 점수는 선택 도시 배너와 상세보기 alert에도 함께 노출됩니다.
+| 가장 빠른 비   | 보정           |
+| -------------- | -------------- |
+| 오늘           | 최종 0점       |
+| 내일           | 최대 20점      |
+| 2일 뒤         | 20점 감점      |
+| 3일 뒤         | 10점 감점      |
+| 이후 또는 없음 | 추가 감점 없음 |
 
-### 🧊 얼죽아 지수
+### 야외활동 지수
 
-체감온도 중심에 습도 가산.
+100점에서 시작해 야외 활동을 방해하는 조건을 감점합니다.
 
-```js
-score = clamp(round((feelsLike + 5) × 2.5 + max(0, humidity - 50) × 0.3), 0, 100)
-```
+- 적정 기온 15~26℃ 밖: 1℃당 4점, 최대 35점 감점
+- 강수: `Math.round(pop × 40)` 감점
+- PM10: 30 초과 10점, 50 초과 20점, 80 초과 30점 감점
+- 풍속: 6m/s 초과 10점, 10m/s 초과 20점 감점
+- 습도: 70% 초과 5점, 85% 초과 10점 감점
 
-75↑ `얼어 죽어도 아이스` / 45↑ `아이스도 괜찮음` / 20↑ `따뜻한 것도 고민` / 그 외 `오늘은 뜨아`
+### 얼죽아 지수
 
-### 🐟 붕어빵 지수
-
-기온이 낮을수록 상승하는 **역방향 지수**. 15℃ 이상이면 0점으로 반전됩니다.
-
-```js
-score = temp >= 15 ? 0
-      : temp <= 0  ? 100
-      : round(((15 - temp) / 15) × 100)
-```
-
-75↑ `붕어빵 필수` / 45↑ `붕어빵 생각남` / 0 초과 `있으면 먹기` / 0 `오늘은 붕어빵 없음`
-
-### 🦟 모기 출현 지수
-
-기온 25℃에서 정점을 이루는 삼각 분포에 습도를 더하고 풍속을 뺍니다.
+기온 대신 체감 기온과 습도를 사용합니다.
 
 ```js
-tempScore     = (temp <= 15 || temp >= 35) ? 0
-              : temp <= 25 ? ((temp - 15) / 10) × 60
-                           : ((35 - temp) / 10) × 60
-humidityScore = clamp((humidity - 40) / 40, 0, 1) × 40
-windPenalty   = min(windSpeed × 4, 25)
-score         = temp <= 15 ? 0 : clamp(round(tempScore + humidityScore - windPenalty), 0, 100)
+score = clamp(Math.round((feelsLike + 5) * 2.5 + Math.max(0, humidity - 50) * 0.3), 0, 100)
 ```
 
-75↑ `모기 파티 주의` / 50↑ `기피제 챙기기` / 25↑ `한두 마리 조심` / 그 외 `모기 걱정 없음`
+### 붕어빵 지수
 
-### 상대 시간
+기온이 낮을수록 점수가 올라가는 역방향 계절 지수입니다.
 
 ```js
-< 60초 → 방금 전 · < 60분 → N분 전 · < 24시간 → N시간 전 · 그 이상 → N일 전
+temp >= 15 ? 0
+temp <= 0  ? 100
+그 외       Math.round(((15 - temp) / 15) * 100)
 ```
 
-`WeatherParent`가 `setInterval`로 1분마다 `now`를 갱신하고 이를 prop으로 내려주기 때문에, 카드가 각자 타이머를 갖지 않아도 표기가 함께 갱신됩니다.
+### 모기 출현 지수
 
-Mock의 `updatedAt`은 **모듈 로드 시점 기준 20분 전**으로 계산됩니다. 고정 날짜를 쓰면 시간이 지날수록 `N일 전`이 계속 늘어나 상대 시간 표기와 1분 갱신이 동작하는지 확인할 수 없기 때문입니다. 예보 날짜도 같은 기준으로 함께 이동하므로 `findNextRain`의 `daysFromNow`는 변하지 않습니다.
+- 15℃ 이하 또는 35℃ 이상에서는 온도 점수 0
+- 25℃에서 온도 점수 최대
+- 습도 40~80% 구간에서 가산
+- 풍속에 따라 최대 25점 감점
+
+다른 네 지수는 높을수록 좋은 점수이지만, **모기 출현 지수는 낮을수록 쾌적한 값**입니다. 이 차이는 도시 대결 계산에도 반영됩니다.
 
 ---
 
-## 데이터 모델
+## 도시 대결 규칙
 
-Mock과 API가 **동일한 내부 스키마**를 반환합니다. 지수 로직은 어느 쪽에서 왔는지 알지 못합니다.
+도시 대결은 별도의 전적 Store를 사용하지 않습니다. 두 도시 선택은 `WeatherBattleView`의 로컬 `ref`, 대결 결과는 `computed`로 관리합니다.
+
+1. 서로 다른 도시 두 곳을 선택합니다.
+2. 각 도시의 생활 지수 5종을 계산합니다.
+3. 같은 지수끼리 점수를 비교합니다.
+4. 손세차·야외활동·얼죽아·붕어빵은 높은 점수가 라운드에서 승리합니다.
+5. 모기 출현은 낮은 점수가 라운드에서 승리합니다.
+6. 동점인 지수는 라운드 무승부입니다.
+7. 라운드 승리 수가 많은 도시가 최종 승리합니다.
+8. 승리 수가 같으면 종합점수로 결정합니다.
+9. 종합점수까지 같으면 최종 무승부입니다.
+
+종합점수에서는 네 개의 일반 지수를 더하고 모기 출현 지수를 뺍니다.
+
+```js
+total = carWash + outdoorActivity + iceAmericano + bungeoppang - mosquito
+```
+
+화면에는 현재 대결의 최종 승자와 각 라운드 결과만 표시합니다. 전적이나 승패 기록은 Pinia, Local Storage 또는 서버에 저장하지 않습니다.
+
+---
+
+## 데이터 구조와 처리 흐름
+
+### 전체 흐름
+
+```mermaid
+flowchart LR
+    A[View 진입 또는 사용자 검색] --> B[Pinia weatherStore]
+    B --> C[weatherService]
+    C -->|mock| D[mockWeatherProvider]
+    C -->|openweather| E[openWeatherProvider]
+    E --> F[Axios / OpenWeather API]
+    F --> G[Mapper]
+    D --> H[내부 CityWeather 모델]
+    G --> H
+    H --> B
+    B --> I[View]
+    I --> J[props]
+    J --> K[UI Component]
+    K -->|emit| I
+```
+
+### 내부 날씨 모델
+
+Mock과 OpenWeather 응답은 모두 다음 형태로 통일됩니다.
 
 ```js
 {
@@ -243,400 +619,586 @@ Mock과 API가 **동일한 내부 스키마**를 반환합니다. 지수 로직�
   apiName: 'Seoul',
   country: 'KR',
   state: '서울특별시',
-  coords: { lat: 37.5665, lon: 126.978 },
-  timezone: 32400,          // UTC offset (초)
+  coords: {
+    lat: 37.5665,
+    lon: 126.978,
+  },
+  timezone: 32400,
+
   temp: 22,
   feelsLike: 24,
   status: '맑음',
   humidity: 55,
   windSpeed: 2.4,
-  pop: 0,                   // 강수확률 0~1
-  pm10: 25,                 // ㎍/㎥
-  forecast: [{ dt, pop }],  // 일별
-  hourly:   [{ dt, temp, feelsLike, status, pop }],
-  updatedAt: '…',           // ISO 문자열. Mock은 로드 시점 기준 20분 전
+  pop: 0.1,
+  pm10: 25,
+
+  forecast: [
+    {
+      dt: 1786460400,
+      pop: 0.1,
+      tempMin: 18,
+      tempMax: 25,
+      status: '맑음',
+    },
+  ],
+
+  hourly: [
+    {
+      dt: 1786471200,
+      temp: 18,
+      feelsLike: 18,
+      status: '맑음',
+      pop: 0,
+    },
+  ],
+
+  updatedAt: '2026-08-11T09:00:00+09:00',
   isFavorite: false,
 }
 ```
 
-Mock 데이터는 **8개 도시의 지수 등급이 서로 갈리도록** 설계했습니다. (서울=쾌청 / 수원=종일 비 / 제주=고온다습 등) 이 분포는 테스트로 강제됩니다 — 아래 [테스트](#테스트) 참고.
+필드 규칙:
+
+- `coords`, `feelsLike`, `windSpeed`, `pop` 이름을 고정해 사용합니다.
+- `pop`은 항상 0~1로 유지합니다.
+- 백분율은 UI에서 `Math.round(pop * 100)`으로 변환합니다.
+- 시간은 UNIX 초 `dt`와 도시의 `timezone`으로 계산합니다.
+- 산책 가능 여부 같은 파생 Boolean을 모델에 저장하지 않고 원본 날씨에서 계산합니다.
+
+### OpenWeather Mapper
+
+| 내부 필드   | OpenWeather 응답                               |
+| ----------- | ---------------------------------------------- |
+| `temp`      | `current.main.temp`                            |
+| `feelsLike` | `current.main.feels_like`                      |
+| `status`    | `current.weather[0].main`을 한글 상태로 정규화 |
+| `humidity`  | `current.main.humidity`                        |
+| `windSpeed` | `current.wind.speed`                           |
+| `coords`    | `current.coord`                                |
+| `timezone`  | `current.timezone`                             |
+| `updatedAt` | `current.dt`                                   |
+| `pm10`      | `airPollution.list[0].components.pm10`         |
+| `hourly`    | `forecast.list` 변환                           |
+| `forecast`  | 현지 날짜별 Forecast 그룹                      |
+
+Mapper는 결측 필드에 안전한 기본값을 제공하고 강수확률을 0~1로 제한합니다.
+
+### Provider 공통 인터페이스
+
+| 메서드                                | 역할                              |
+| ------------------------------------- | --------------------------------- |
+| `listInitialCities(options)`          | 초기 8개 도시 로딩                |
+| `searchCities(query, options)`        | 로컬 카탈로그 또는 Geocoding 검색 |
+| `fetchCitySummary(location, options)` | 현재 날씨만 조회                  |
+| `fetchCityDetails(location, options)` | 예보와 PM10 보충                  |
+| `fetchCityWeather(location, options)` | 현재·예보·PM10 전체 조회          |
+
+Mock Provider도 `async` 인터페이스를 사용하기 때문에 Store에서 데이터 출처별 분기 없이 동일하게 `await`할 수 있습니다. Mock 반환값은 `structuredClone()`으로 복사해 원본 데이터가 즐겨찾기 변경 등으로 오염되지 않게 합니다.
 
 ---
 
-## 데이터 소스 전환
+## Pinia Store
 
-`weatherService`가 환경변수를 읽어 프로바이더를 고릅니다. 화면·스토어·지수 코드는 전환에 영향을 받지 않습니다.
+### weatherStore
 
-```js
-export const createWeatherService = ({ source = 'mock', apiKey = '' } = {}) => {
-  if (source === 'mock') return mockWeatherProvider
-  if (source === 'openweather') return createOpenWeatherProvider(apiKey)
-  throw new Error(`지원하지 않는 날씨 데이터 소스입니다: ${source}`)
-}
-```
+날씨 도메인의 공유 상태를 관리하는 Setup Store입니다.
 
-두 프로바이더 모두 동일한 인터페이스를 구현합니다.
+#### State
 
-| 메서드 | 설명 |
-| --- | --- |
-| `listInitialCities()` | 초기 도시 목록 |
-| `searchCities(query, { signal })` | 도시 검색 |
-| `fetchCityWeather(location, { signal })` | 단일 도시 날씨 |
+| 상태             | 설명                                |
+| ---------------- | ----------------------------------- |
+| `cities`         | 현재 화면에서 사용할 도시 날씨 배열 |
+| `selectedCityId` | 선택된 도시 ID                      |
+| `searchQuery`    | 검색 입력값                         |
+| `recentSearches` | 최근 검색어 최대 5개                |
+| `searchResults`  | 도시 검색 후보                      |
+| `searchStatus`   | 검색 상태                           |
+| `cityLoadStatus` | 도시별 상세 로딩 상태               |
+| `loadStatus`     | 초기 목록 로딩 상태                 |
+| `error`          | 사용자에게 표시할 오류 메시지       |
 
-### OpenWeather 연동 상태
+#### Getters
 
-> **연동 코드는 구현 완료, 실제 API 키로는 미검증입니다.** 기본값은 `mock`이며, `.env.example`을 `.env`로 복사한 뒤 아래처럼 채우면 실 API로 전환됩니다.
+| Getter           | 설명                                    |
+| ---------------- | --------------------------------------- |
+| `selectedCity`   | 선택 ID에 해당하는 도시, 없으면 첫 도시 |
+| `filteredCities` | 검색어에 맞는 도시 목록                 |
+| `favoriteCities` | `isFavorite`인 도시 목록                |
 
-```bash
-# .env
-VITE_WEATHER_SOURCE=openweather
-VITE_OPENWEATHER_KEY=발급받은_키
-```
+#### Actions
 
-`createOpenWeatherProvider`는 도시 하나당 세 엔드포인트를 `Promise.all`로 병렬 호출한 뒤 `mapOpenWeatherBundle`로 내부 스키마에 매핑합니다.
+| Action                              | 설명                                       |
+| ----------------------------------- | ------------------------------------------ |
+| `loadCities()`                      | 초기 도시를 중복 없이 로딩                 |
+| `ensureCityDetails(cityId)`         | 선택 도시의 Forecast와 PM10을 한 번만 보충 |
+| `searchCities(query)`               | 300ms 디바운스 검색                        |
+| `clearSearch()`                     | 검색 타이머·요청·결과 정리                 |
+| `addCityFromSearchResult(location)` | 검색 결과 도시 날씨 조회 후 추가           |
+| `removeCity(cityId)`                | 도시 제거                                  |
+| `selectCity(cityId)`                | 존재하는 도시만 선택                       |
+| `toggleFavorite(cityId)`            | 즐겨찾기 전환                              |
+| `addRecentSearch(query)`            | 최근 검색어 최신순 추가                    |
+| `removeRecentSearch(query)`         | 최근 검색어 삭제                           |
+| `refreshCity(cityId)`               | 즐겨찾기 값을 유지하며 날씨 새로고침       |
 
-| 내부 필드 | OpenWeather 출처 |
-| --- | --- |
-| `temp`, `feelsLike`, `humidity` | `/data/2.5/weather` → `main.*` |
-| `status` | `weather[0].description` (`lang=kr`) |
-| `windSpeed` | `wind.speed` |
-| `coords`, `timezone`, `updatedAt` | `coord`, `timezone`, `dt` |
-| `pop` | `/data/2.5/forecast` → `list[0].pop` |
-| `hourly` | `/data/2.5/forecast` → `list[]` 전체 |
-| `forecast` | 위 `list[]`를 도시 로컬 날짜로 묶고 **일별 최대 pop** 채택 |
-| `pm10` | `/data/2.5/air_pollution` → `components.pm10` |
-| 도시 검색 | `/geo/1.0/direct` → `local_names.ko` 우선, `country === 'KR'`만 통과 |
+### configStore
 
-무료 플랜의 `5 day / 3 hour forecast`는 5일까지만 제공합니다. `findNextRain`은 배열을 그대로 순회하므로 예보 기간이 바뀌어도 코드 수정이 필요 없습니다.
+화면 전체에서 공유하는 표시 설정을 관리합니다.
 
-### 미연동 / 로드맵
+| 구분   | 이름            | 설명                        |
+| ------ | --------------- | --------------------------- |
+| State  | `unit`          | `celsius` 또는 `fahrenheit` |
+| State  | `theme`         | `light` 또는 `dark`         |
+| Getter | `unitSymbol`    | `°C` 또는 `°F`              |
+| Action | `toggleUnit()`  | 섭씨와 화씨 전환            |
+| Action | `toggleTheme()` | 라이트와 다크 모드 전환     |
 
-- 🔜 실 API 키 검증 및 에러 케이스 대응
-- 🔜 즐겨찾기 · 최근 검색어 localStorage 영속화
-- 🔜 즐겨찾기 전용 화면, 도시 상세 화면 (현재 상세는 `window.alert`)
-- 🔜 지도 기반 도시 추가
-- 🔜 섭씨/화씨 토글
-- 🔜 산책 추천 패널 이미지 (`walkImage` / `stayHomeImage` prop 자리는 확보됨, 현재 플레이스홀더)
+### counter Store
 
----
+`src/stores/counter.js`는 Pinia 사용법을 학습하기 위한 별도 코드 챌린지 예제입니다. 실제 날씨 기능과 연결되지 않으며 `StoreExample.vue`에서 `storeToRefs()`, Getter와 Action 사용법을 보여줍니다.
 
-## 기술 스택
+### Store와 영속 저장의 차이
 
-| 분류 | 사용 기술 | 비고 |
-| --- | --- | --- |
-| UI 프레임워크 | Vue 3 (Composition API, `<script setup>`) | |
-| 빌드 도구 | Vite 8 | `@` → `src` 별칭 설정됨 (현재 상대 경로 import 사용) |
-| 상태 관리 | Pinia 3 | Setup Store 문법 |
-| 라우팅 | Vue Router 5 | `App.vue`가 `<RouterView>`만 렌더, 404 Catch-all |
-| HTTP | **네이티브 `fetch`** | 별도 HTTP 라이브러리 미사용 |
-| 스타일 | 순수 CSS + CSS 변수 토큰 | UI 라이브러리 미사용 |
-| 테스트 | `node:test` + `node:assert` | 별도 러너 미설치 |
-| 린트/포맷 | ESLint, Oxlint, Prettier | |
+Pinia Store는 현재 브라우저 탭의 JavaScript 메모리에 존재합니다. 라우트로 페이지를 이동하는 동안은 유지되지만 새로고침하면 초기화됩니다.
 
-의존성을 최소로 유지했습니다. axios·Element Plus·Leaflet 등은 현재 기능 범위에서 필요하지 않아 도입하지 않았습니다.
+현재 프로젝트는 Local Storage 영속화를 사용하지 않습니다. 따라서 다음 값은 새로고침 후 초기화됩니다.
 
----
+- 선택 도시
+- 검색으로 추가한 도시
+- 최근 검색어
+- 즐겨찾기
+- 섭씨/화씨
+- 라이트/다크 모드
 
-## 실행 방법
-
-```bash
-npm install
-```
-
-```bash
-npm run dev
-```
-
-```bash
-npm run build
-```
-
-```bash
-npm test
-```
-
-```bash
-npm run lint
-```
-
-기본 상태에서는 환경변수 없이 Mock 데이터로 바로 실행됩니다. 실 API 전환은 `.env.example`을 `.env`로 복사해 사용하세요 — [데이터 소스 전환](#데이터-소스-전환) 참고.
+도시 대결 선택, 대결 결과와 운세 생년월일도 저장하지 않습니다.
 
 ---
 
 ## 프로젝트 구조
 
-```
-.env.example                         # 데이터 소스 · API 키 템플릿
+```text
 src/
-├── main.js                          # 앱 진입점 (Pinia · Router 등록)
-├── App.vue                          # <RouterView /> 만 렌더하는 셸
-├── assets/styles/                   # reset · tokens · global
-├── router/index.js                  # / · 404 Catch-all
+├── App.vue
+├── main.js
+├── router/
+│   └── index.js
+│
 ├── views/
-│   ├── WeatherDashboardView.vue     # 라우트 진입점 (<WeatherParent /> 한 줄)
-│   └── NotFoundView.vue             # 404
-├── components/weather/
-│   ├── WeatherParent.vue            # 상태·계산·핸들러 오케스트레이션
-│   ├── BaseDashboardCard.vue        # 패널 껍데기 + <slot> / <slot name="meta">
-│   ├── SearchBar.vue                # 검색 입력 + 최근 검색 태그
-│   ├── CitySearchResults.vue        # 검색 결과 드롭다운
-│   ├── WeatherCard.vue              # 도시 카드
-│   ├── IndexGrid.vue                # 지수 그리드
-│   ├── IndexCard.vue                # 지수 카드 (점수 게이지)
-│   ├── PreparationPanel.vue         # 외출 준비물
-│   ├── WalkTimePanel.vue            # 산책 추천 시간
-│   └── LogPanel.vue                 # 반응형 상태 추적 로그
+│   ├── NotFoundView.vue
+│   └── weather/
+│       ├── WeatherLandingView.vue
+│       ├── WeatherHomeView.vue
+│       ├── WeatherFavoritesView.vue
+│       ├── WeatherIndicesView.vue
+│       ├── WeatherBattleView.vue
+│       ├── WeatherDetailView.vue
+│       └── WeatherAboutView.vue
+│
+├── components/
+│   ├── practices/
+│   │   ├── basic/
+│   │   └── component/
+│   └── weather/
+│       ├── game/
+│       │   └── FortuneModal.vue
+│       ├── indices/
+│       │   ├── IndexGrid.vue
+│       │   └── IndexCard.vue
+│       ├── recommendations/
+│       │   ├── PreparationPanel.vue
+│       │   ├── WalkTimePanel.vue
+│       │   └── WeatherMusicPanel.vue
+│       ├── search/
+│       │   ├── SearchBar.vue
+│       │   └── CitySearchResults.vue
+│       └── shared/
+│           ├── BaseDashboardCard.vue
+│           ├── UnitToggler.vue
+│           └── WeatherCard.vue
+│
 ├── stores/
-│   └── weatherStore.js              # Pinia 스토어
+│   ├── weatherStore.js
+│   ├── configStore.js
+│   └── counter.js
+│
+├── composables/
+│   └── useTemperature.js
+│
 ├── services/
-│   ├── weatherService.js            # 프로바이더 선택
+│   ├── weatherService.js
 │   ├── providers/
 │   │   ├── mockWeatherProvider.js
 │   │   └── openWeatherProvider.js
 │   └── mappers/
-│       ├── openWeatherMapper.js     # API 응답 → 내부 스키마
-│       └── locationMapper.js        # Geocoding → 내부 위치
+│       ├── locationMapper.js
+│       └── openWeatherMapper.js
+│
 ├── data/
-│   ├── koreanCityCatalog.js         # 8개 도시 + 검색 별칭
-│   └── weatherMock.js               # Mock 날씨 데이터
-└── utils/
-    ├── weatherModel.js              # 타입 정의 + clamp / 위치 비교 유틸
-    ├── citySearch.js
-    ├── formatRelativeTime.js
-    ├── logger.js                    # 로그 접두사 포맷 (Vue 비의존)
-    ├── indices/                     # 지수 5종 + 레지스트리
-    │   ├── index.js                 # INDICES 레지스트리 · computeIndices
-    │   ├── carWash.js
-    │   ├── outdoorActivity.js
-    │   ├── iceAmericano.js
-    │   ├── bungeoppang.js
-    │   └── mosquito.js
-    └── recommendations/
-        ├── preparation.js           # 외출 준비물
-        └── walkTimes.js             # 산책 가능 시간
-test/weather.test.js
+│   ├── koreanCityCatalog.js
+│   ├── weatherMock.js
+│   ├── fortuneMock.json
+│   └── weatherMusic.json
+│
+├── utils/
+│   ├── citySearch.js
+│   ├── formatRelativeTime.js
+│   ├── weatherBattle.js
+│   ├── weatherModel.js
+│   ├── indices/
+│   │   ├── index.js
+│   │   ├── carWash.js
+│   │   ├── outdoorActivity.js
+│   │   ├── iceAmericano.js
+│   │   ├── bungeoppang.js
+│   │   └── mosquito.js
+│   └── recommendations/
+│       ├── preparation.js
+│       ├── walkTimes.js
+│       └── music.js
+│
+└── assets/
+    ├── styles/
+    │   ├── reset.css
+    │   ├── tokens.css
+    │   ├── global.css
+    │   └── element-plus.css
+    └── images/
+        ├── battle/
+        └── walk/
+
+test/
+└── weather.test.js
 ```
 
-Vue 표준 디렉터리 규칙(`components` / `views` / `stores` / `services` / `utils` / `data`)을 그대로 따르고, 날씨 컴포넌트만 `components/weather/`로 묶었습니다.
+### 폴더별 역할
 
-### 스캐폴드 잔여 파일
+| 폴더                      | 역할                                       |
+| ------------------------- | ------------------------------------------ |
+| `views`                   | Route와 연결되는 페이지 단위 데이터 흐름   |
+| `components`              | props와 emit 중심의 재사용 UI              |
+| `stores`                  | 여러 View가 공유하는 반응형 상태와 Action  |
+| `composables`             | Vue 반응성을 재사용하는 기능               |
+| `services`                | 데이터 공급자 선택과 외부 API 호출         |
+| `providers`               | Mock 또는 OpenWeather라는 실제 데이터 출처 |
+| `mappers`                 | 외부 응답을 내부 모델로 변환               |
+| `data`                    | 도시 카탈로그, Mock 날씨, 운세와 음악 목록 |
+| `utils`                   | Vue와 무관한 순수 계산                     |
+| `assets/styles`           | 전역 디자인 토큰, 리셋, Element Plus 보정  |
+| Vue 파일의 `style scoped` | 해당 컴포넌트에만 필요한 레이아웃과 표현   |
 
-아래는 Vue 학습·템플릿 파일로, 날씨 기능과 무관하며 현재 화면에서 사용되지 않습니다.
-
-```
-src/components/practices/       # Vue 문법 실습 컴포넌트
-src/components/HelloWorld.vue, TheWelcome.vue, WelcomeItem.vue, icons/
-src/views/HomeView.vue, AboutView.vue
-src/stores/counter.js
-src/assets/base.css, main.css, challenge.css
-```
+`components/practices`는 수업 실습 기록을 보존하는 폴더이며 현재 날씨 라우트의 UI 구성에는 사용하지 않습니다.
 
 ---
 
-## 라우팅
+## 기술 스택
 
-| 경로 | 이름 | 컴포넌트 | 설명 |
-| --- | --- | --- | --- |
-| `/` | `weather-dashboard` | `WeatherDashboardView` | 대시보드 |
-| `/:pathMatch(.*)*` | `not-found` | `NotFoundView` | 404 Catch-all |
+| 구분          | 기술                   | 사용 목적                                       |
+| ------------- | ---------------------- | ----------------------------------------------- |
+| UI 프레임워크 | Vue 3                  | Composition API와 `<script setup>`              |
+| 빌드 도구     | Vite 8                 | 개발 서버, 환경변수, 프로덕션 빌드              |
+| 상태 관리     | Pinia 3                | 도시·검색·즐겨찾기·표시 설정 공유               |
+| 라우팅        | Vue Router 5           | Lazy Route, 동적 도시 ID, 404                   |
+| HTTP          | Axios                  | OpenWeather API의 `async/await` 요청            |
+| UI 라이브러리 | Element Plus           | Skeleton, Dialog, DatePicker, Select, Result 등 |
+| 아이콘        | Element Plus Icons Vue | 검색·깃발 등 인터페이스 아이콘                  |
+| 스타일        | CSS                    | 디자인 토큰, Glass UI, 다크 모드, 반응형 화면   |
+| 테스트        | Node `node:test`       | Mapper, Provider, 지수와 추천 순수 함수         |
+| 정적 검사     | ESLint, Oxlint         | 문법·Vue 규칙·코드 품질 검사                    |
+| 포맷          | Prettier               | 소스 코드 형식 통일                             |
 
-`App.vue`는 `<RouterView />`만 렌더하는 셸이고, `views/WeatherDashboardView.vue`는 `<WeatherParent />` 한 줄만 갖는 얇은 진입점입니다. 실제 상태와 로직은 전부 `components/weather/WeatherParent.vue`에 있습니다.
-
-이 3단 구성 덕분에 즐겨찾기·상세 같은 화면을 추가할 때 **`views/`에 파일 하나 만들고 라우트 한 줄 추가**하면 되고, 기존 컴포넌트는 props/emit만 쓰므로 그대로 재사용됩니다.
-
----
-
-## 데이터 흐름
-
-```
-onMounted (WeatherParent.vue)
-  → store.loadCities()
-    → weatherService.listInitialCities()   ← mock 또는 openweather
-      → (API인 경우) mapOpenWeatherBundle
-        → 내부 스키마 CityWeather[]
-          → store.cities
-
-사용자가 카드 선택
-  → store.selectCity(id)
-    → selectedCity (computed)
-      → computeIndices(selectedCity)   → IndexGrid
-      → getPreparationItems(...)       → PreparationPanel
-      → getWalkableHours(...hourly)    → WalkTimePanel
-
-사용자가 검색어 입력
-  → @update-query → watch → store.searchCities(query)
-    → 300ms 디바운스 + AbortController
-      → searchResults → CitySearchResults
-        → 선택 시 addCityFromSearchResult → cities에 추가
-```
-
-역할 분담:
-
-- **App.vue / View** — 라우팅 셸과 진입점. 로직 없음
-- **WeatherParent** — 스토어와 계산 유틸을 조립하고 사용자 액션을 위임. 계산 로직 없음
-- **Component** — props로 받고 emit으로 알림. 스토어 직접 접근 없음
-- **Store** — 상태·비동기·디바운스·중복 판정
-- **Service / Provider** — 데이터 출처 추상화
-- **Mapper** — 외부 응답을 내부 스키마로 고정
-- **Utils** — 순수 함수. 프레임워크 의존 없음 → Node 테스트로 직접 검증 가능
+Element Plus 컴포넌트는 `unplugin-auto-import`와 `unplugin-vue-components` 설정으로 자동 import됩니다. 따라서 Vue 템플릿에서 `<ElSkeleton>`, `<ElDialog>` 등을 직접 사용할 수 있습니다.
 
 ---
 
-## Vue 개념 적용
+## Vue 학습 요소
 
 ### Composition API
 
-- `ref` — `cities`, `searchQuery`, `selectionMessage`, `now`, `logs`
-- `computed` — `selectedCity`, `filteredCities`, `indices`, `outdoorIndex`, `preparationItems`, `walkableHours`, `showSearchResults`, `dashboardSummary`, `bestWalkCity`
-- `storeToRefs` — 스토어 상태를 반응성 유지한 채 구조 분해
-- `onMounted` / `onBeforeUnmount` — 1분 타이머 등록 및 정리, 진행 중 검색 취소
+- `ref`: 검색어, 도시 대결 선택, 팝업 열림 여부
+- `computed`: 선택 도시, 검색 필터, 즐겨찾기, 지수와 대결 결과
+- `watch`: 검색어 변경, Route 도시 변경, 운세 입력 변경
+- `watchEffect`: 전역 테마를 HTML dataset과 Element Plus 다크 클래스에 반영
+- `onMounted`: 초기 도시 로딩과 타이머 시작
+- `onBeforeUnmount`: 검색 취소와 상대 시간 타이머 정리
 
-### 반응성 감시 (watch / watchEffect)
+### Template 문법
 
-`WeatherParent`에 `watch` 5개와 `watchEffect` 1개가 있습니다. 첫 번째만 실제 동작을 일으키고, 나머지 5개는 로그 전용이라 모두 제거해도 앱은 동일하게 작동합니다.
+- `v-for`: 도시 카드, 생활 지수, 시간대별 예보, 일별 예보
+- `v-if / v-else`: 로딩·오류·빈 결과, 더움·선선함, 승리·무승부
+- `v-model`: 도시 선택 Select, 생년월일 DatePicker
+- `:class`: 선택 도시, 지수 등급, 승자 강조
+- `@click.stop`: 카드 내부 버튼의 이벤트 버블링 방지
+- `@submit.prevent`: 검색 폼 새로고침 차단
+- `Transition / TransitionGroup`: 페이지와 도시 카드 변화
 
-| 대상 | 방식 | 역할 |
-| --- | --- | --- |
-| `searchQuery` | `watch` | **검색 실행 트리거** (유일한 기능성 watcher) |
-| `selectionMessage` | `watch` | 상태바 문구 변경 로그 |
-| (자동 추적) | `watchEffect` | 검색어 + 결과 건수 로그. 마운트 즉시 1회 실행 |
-| `cities` | `watch` + `{ deep: true }` | 즐겨찾기 토글·도시 증감 감지 |
-| `[selectedCityId, searchQuery]` | `watch` 배열 다중 소스 | 두 값 통합 감지 |
-| `() => bestWalkCity?.id` | `watch` getter 소스 | 산책 1위 변경 (이전 값 추적 가능) |
+### props와 emit
 
-getter 소스를 쓰는 이유는 객체 전체를 감시하면 `oldValue`가 보존되지 않기 때문입니다.
+`WeatherCard`는 Store를 직접 import하지 않습니다. 도시 객체와 선택 상태를 props로 받고 다음 이벤트를 부모 View로 보냅니다.
 
-로그는 `utils/logger.js`가 접두사를 붙이고, `pushLog`가 콘솔과 `logs` ref에 **동일한 문자열**을 남깁니다. `LogPanel`이 최근 20건을 화면에 표시하므로 콘솔을 열지 않고도 반응성 발화를 확인할 수 있습니다.
+- `select-card`
+- `click-detail`
+- `toggle-favorite`
 
-### 컴포넌트 통신
+`SearchBar` 역시 검색 API를 직접 호출하지 않고 입력과 사용자 이벤트만 emit합니다. View가 이벤트를 받아 Store Action을 실행합니다.
 
-| 컴포넌트 | props | emits |
-| --- | --- | --- |
-| `BaseDashboardCard` | `title`, `titleId`, `eyebrow`, `icon` | — (슬롯: 기본 / `meta`) |
-| `SearchBar` | `modelValue`, `resultCount`, `recentSearches` | `update-query`, `submit`, `select-recent`, `remove-recent` |
-| `CitySearchResults` | `results`, `status`, `visible` | `select` |
-| `WeatherCard` | `city`, `selected`, `now` | `select-card`, `click-detail`, `toggle-favorite` |
-| `IndexGrid` / `IndexCard` | `indices` / `index` | — |
-| `PreparationPanel` | `cityName`, `items` | — |
-| `WalkTimePanel` | `city`, `availableHours`, `walkImage`, `stayHomeImage` | — |
-| `LogPanel` | `logs` | — |
+### Pinia와 `storeToRefs()`
 
-### 슬롯과 스코프
-
-`BaseDashboardCard`는 패널 껍데기(테두리·라운드·그림자·헤더)만 갖는 액자이고, 내용은 `<slot>`으로 주입받습니다.
-
-```vue
-<BaseDashboardCard eyebrow="REGIONAL WEATHER" title="지역별 날씨" title-id="cities-title">
-  <template #meta>{{ selectionMessage }}</template>
-  <WeatherCard v-for="city in filteredCities" :key="city.id" :city="city"
-    @select-card="handleSelectCity" @click-detail="handleDetail" />
-</BaseDashboardCard>
-```
-
-`<WeatherCard>`는 화면상 `BaseDashboardCard` 안에 그려지지만 **코드상으로는 `WeatherParent`의 템플릿에 적혀 있으므로 부모 스코프에서 컴파일**됩니다. 따라서 props/emit 상대는 언제나 `WeatherParent`이고, `BaseDashboardCard`는 데이터를 전혀 만지지 않습니다.
-
-같은 이유로 **슬롯 콘텐츠는 `BaseDashboardCard`의 `<style scoped>`를 받지 않습니다.** 내용 스타일은 전부 넣는 쪽에 둡니다. 패널마다 다른 배경·아이콘 색은 CSS 변수(`--card-bg`, `--card-icon-bg` 등)로 노출해 사용처에서 덮어씁니다.
-
-### Pinia
-
-`useWeatherStore` (Setup Store, `src/stores/weatherStore.js`)
-
-- **state** — `cities`, `selectedCityId`, `searchQuery`, `recentSearches`, `searchResults`, `searchStatus`, `cityLoadStatus`, `loadStatus`, `error`
-- **getters** — `selectedCity`, `filteredCities`, `favoriteCities`
-- **actions** — `loadCities`, `searchCities`, `clearSearch`, `addCityFromSearchResult`, `removeCity`, `selectCity`, `toggleFavorite`, `addRecentSearch`, `removeRecentSearch`, `refreshCity`
-
-좌표 기반 중복 판정(`isSameLocation`)으로 같은 도시가 두 번 추가되지 않습니다. `refreshCity`는 갱신 시에도 즐겨찾기 상태를 보존합니다.
-
-### 확장 포인트: 지수 레지스트리
-
-지수는 컴포넌트에 하드코딩되지 않고 배열로 등록됩니다.
+Store의 State와 Getter를 구조 분해할 때 반응성을 잃지 않도록 `storeToRefs()`를 사용합니다. Action은 Store 인스턴스에서 직접 호출합니다.
 
 ```js
-export const INDICES = [carWash, outdoorActivity, iceAmericano, bungeoppang, mosquito]
+const store = useWeatherStore()
+const { cities, selectedCity, loadStatus } = storeToRefs(store)
 
-export const computeIndices = (weather) =>
-  INDICES.map((index) => ({ ...index, ...index.compute(weather) }))
+store.loadCities()
 ```
 
-`IndexGrid`는 이 배열을 `v-for`로 순회합니다. **지수 추가 = `src/utils/indices/`에 파일 1개 작성 + 배열에 한 줄 등록**이며, 컴포넌트는 수정하지 않습니다.
+### Router
 
-### Modern JavaScript
+- `RouterLink`: 상단 내비게이션과 단순 페이지 이동
+- `router.push()`: 도시를 선택한 뒤 생활 지수 또는 상세 페이지로 이동
+- `route.params.cityId`: 동적 도시 상세 조회
+- Catch-all Route: 정의되지 않은 주소를 404 View로 연결
 
-- `async` / `await`, `Promise.all` — 세 엔드포인트 병렬 호출
-- `AbortController` — 이전 검색 요청 취소
-- Optional chaining / nullish coalescing — API 응답 누락 필드 방어
-- `structuredClone` — Mock 데이터 원본 오염 방지
-- `Map` — 예보 일별 그룹핑
-- `URL` / `URLSearchParams` — 쿼리 문자열 조립
-- ES Module `import` / `export`, 순수 함수 단위 분리
+### async/await와 Promise
+
+Axios 요청은 `async/await`으로 읽기 쉽게 작성했습니다. 여러 독립 요청을 동시에 시작해야 할 때는 `Promise.all()` 또는 `Promise.allSettled()`을 `await`합니다.
+
+두 문법은 서로 대체 관계가 아닙니다.
+
+- `async/await`: Promise 결과를 순서대로 읽기 쉽게 다루는 문법
+- `Promise.all`: 여러 Promise를 동시에 기다리는 병렬 처리 도구
+- `Promise.allSettled`: 일부 요청 실패와 성공을 함께 수집하는 도구
 
 ---
 
-## 테스트
+## 테스트와 코드 검사
 
-`node:test` 8개, 외부 러너 없이 `npm test`로 실행됩니다.
+### 전체 테스트
 
-```
-✔ 국내 도시 카탈로그와 별칭을 검색한다
-✔ Geocoding 결과는 국내만 남기고 내부 위치 모델로 바꾼다
-✔ Forecast를 날짜별 최대 pop으로 묶는다
-✔ OpenWeather 필드를 고정 내부 스키마로 매핑한다
-✔ 지수 레지스트리 계약과 Mock 등급 분포를 지킨다
-✔ 지수 경계와 다음 비를 계산한다
-✔ 산책 시간은 맑은 15~26도를 포함하고 비를 제외한다
-✔ 데이터 소스를 선택하고 잘못된 설정을 거부한다
+```bash
+npm test
 ```
 
-특히 다음 두 가지를 자동으로 강제합니다.
+Node 기본 `node:test`를 사용하며 현재 다음 영역을 검증합니다.
 
-- **지수 등급 분포** — 각 지수가 Mock 8개 도시에서 최소 2개 이상 서로 다른 등급을 내야 통과. 목업 값이 한쪽으로 쏠려 조건부 렌더링이 화면에 드러나지 않는 상황을 막습니다.
-- **경계값** — 붕어빵 15℃ 반전, 모기 15℃ 컷오프, `findNextRain`의 최초 강수일 선택 및 빈 배열 → `null` 처리
+- 국내 도시 카탈로그와 별칭 검색
+- 국내 Geocoding 결과 필터
+- Forecast의 현지 날짜 그룹
+- 일별 최저·최고 기온과 대표 날씨
+- OpenWeather 내부 모델 매핑
+- PM10 5단계 분류
+- 생활 지수 레지스트리와 Mock 등급 분포
+- 손세차 다음 비와 지수 경계
+- 산책 가능 시간과 날씨 이미지
+- 오늘의 외출 브리핑
+- 날씨와 현지 시간 기반 음악 추천
+- 오늘 8개 Forecast 슬롯
+- Mock/OpenWeather Provider 선택
+- 섭씨/화씨 변환과 원본 데이터 불변
+- Axios 파라미터와 응답 매핑
+- 점진적 초기 로딩과 상세 지연 요청
+- 취소·401·429·timeout·네트워크 오류 변환
+- 도시 대결과 모기 역방향 규칙
+- 동일 도시 선택 방지와 무승부
+- 단위 변경 후 대결 결과 불변
+
+### Lint
+
+```bash
+npm run lint
+```
+
+Oxlint와 ESLint가 순서대로 실행됩니다. 현재 스크립트에는 자동 수정 옵션이 포함되어 있으므로 실행 전 작업 중인 변경사항을 확인하는 것이 좋습니다.
+
+### Format
+
+```bash
+npm run format
+```
+
+### 프로덕션 빌드
+
+```bash
+npm run build
+```
+
+결과물은 `dist/`에 생성됩니다.
+
+### 빌드 결과 미리보기
+
+```bash
+npm run preview
+```
+
+최종 확인 권장 순서:
+
+```bash
+npm run lint
+npm test
+npm run build
+```
 
 ---
 
-## 과제 요건 대응
+## v1.0 배포 안내
 
-| 요건 | 구현 위치 |
-| --- | --- |
-### 과제 1 — Mockup
+### Mock 관련 파일을 배포에 포함하는 이유
 
-| 요건 | 구현 위치 |
-| --- | --- |
-| 배열 렌더링 (`v-for`) + `:key` | `WeatherParent`(도시), `IndexGrid`(지수), `SearchBar`(최근 검색), `WalkTimePanel`(시간대) |
-| 조건부 렌더링 (`v-if`) | `WeatherCard`의 25℃ 기준 더움/선선함 뱃지, 산책 가능 시간 유무, 로딩/에러/빈 결과 |
-| 양방향 바인딩 · 한글 처리 (`:value`, `@input`) | `SearchBar.vue` — IME 조합 대응을 위해 `v-model` 대신 수동 바인딩 |
-| 카드 선택 시 상태 표기 | `WeatherParent`의 `handleSelectCity` → `"{도시}이(가) 선택되었습니다."` |
-| 상세보기 버블링 차단 | `@click.stop="$emit('click-detail', city)"` → `window.alert` |
-| 본인 데이터 추가 | 8개 도시 카탈로그, 시간대별·일별 예보, 미세먼지, 생활 지수 5종, 산책 시간 · 외출 준비물 추천 |
+다음 파일은 개발 중에만 사용하는 임시 파일처럼 보이지만, 현재 v1.0 구조에서는 **소스 저장소와 배포 빌드에 포함해야 하는 런타임·테스트 자산**입니다.
 
-### 과제 2 — 반응형 상태 추적
+| 파일                                            | 배포 저장소에 필요한 이유                                                         |
+| ----------------------------------------------- | --------------------------------------------------------------------------------- |
+| `src/services/providers/mockWeatherProvider.js` | `weatherService.js`가 정적으로 import하며 API 설정이 없을 때 기본 Provider로 사용 |
+| `src/data/weatherMock.js`                       | Mock 모드의 실제 날씨 데이터이며 지수·추천·대결 테스트의 기준 데이터              |
+| `src/data/fortuneMock.json`                     | “오늘의 레이스 운세”가 화면에서 직접 읽는 런타임 데이터                           |
+| `test/weather.test.js`                          | 배포 전 Mapper, Provider, 지수와 대결 규칙을 검증                                 |
 
-과제 문서의 변수명과 구현의 변수명이 다릅니다. 스토어와 테스트가 현재 이름에 묶여 있어 리네이밍하지 않았습니다.
+이 파일들을 `.gitignore`에 추가하면 로컬에는 파일이 남아 있어 당장 문제가 없어 보일 수 있지만, 새로 clone한 CI·배포 서버에는 파일이 내려오지 않습니다. 그러면 정적 import 해석 단계에서 빌드가 실패하거나 운세 기능이 동작하지 않습니다.
 
-| 과제 문서 | 구현 | 위치 |
-| --- | --- | --- |
-| `searchQuery` | `searchQuery` | 스토어 state |
-| `weatherList` | `cities` | 스토어 state |
-| `filteredWeatherList` | `filteredCities` | 스토어 getter |
-| `selectedCityInfo` | `selectedCity` | 스토어 getter |
+따라서 v1.0에서는 Mock 관련 파일을 의도적으로 Git에 포함합니다. 향후 Mock 모드를 완전히 제거하려면 파일만 ignore하는 것이 아니라 다음 작업을 함께 해야 합니다.
 
-| 요건 | 구현 위치 |
-| --- | --- |
-| 반응형 상태 관리 | 위 대응표 참고 |
-| computed 필터링 | `filteredCities` — 검색어를 `name`/`state`/`apiName`에 부분 일치 |
-| `watch`로 상태바 문구 감시 | `watch(selectionMessage, …)` → 콘솔 + `LogPanel` |
-| `watchEffect`로 검색어 추적 | 마운트 즉시 1회 + 타이핑마다 발화 |
-| 검색 결과 3분기 표시 | 빈 검색어→전체 / 일치→해당 카드 / 불일치→안내 블록 |
-| 본인 상태·computed·watcher 추가 | `logs` ref + `LogPanel`, `dashboardSummary`·`bestWalkCity` computed, deep·다중 소스·getter 소스 watcher 3종 |
+1. `weatherService.js`에서 Mock Provider import와 분기를 제거합니다.
+2. 기본 데이터 소스를 `openweather`로 변경합니다.
+3. Mock에 의존하는 테스트를 별도 fixture로 이전하거나 교체합니다.
+4. API Key가 없는 배포 환경에서 보여줄 설정 오류 화면을 확인합니다.
 
-### 과제 3 — 컴포넌트 분리
+### 배포 환경 설정
 
-| 요건 | 구현 위치 |
-| --- | --- |
-| `WeatherParent.vue` — 모든 반응형 데이터 유지 | `components/weather/WeatherParent.vue` |
-| `BaseDashboardCard.vue` — 디자인 공통화 + `<slot>` | 6개 패널이 공유. `meta` 네임드 슬롯 포함 |
-| `SearchBar.vue` — props/emits | `modelValue` ← / `update-query` → |
-| `WeatherCard.vue` — props/emits | `city` ← / `select-card`·`click-detail` → |
-| 컴포넌트별 `<style scoped>` 분리 | 껍데기는 `BaseDashboardCard`, 내용 스타일은 각 컴포넌트 |
-| 슬롯 자식은 부모 스코프에서 컴파일 | [슬롯과 스코프](#슬롯과-스코프) 참고 |
-| 추가 Component | `IndexGrid`·`IndexCard`·`PreparationPanel`·`WalkTimePanel`·`LogPanel`·`CitySearchResults` |
+정적 호스팅 서비스에는 다음 값을 사용합니다.
+
+| 설정             | 값                          |
+| ---------------- | --------------------------- |
+| Install command  | `npm install` 또는 `npm ci` |
+| Build command    | `npm run build`             |
+| Output directory | `dist`                      |
+| Node.js          | 20.19 이상 또는 22.12 이상  |
+
+실시간 날씨로 배포할 때는 호스팅 서비스의 Environment Variables에 다음 값을 등록합니다.
+
+```dotenv
+VITE_WEATHER_SOURCE=openweather
+VITE_OPENWEATHER_KEY=배포_서비스에_등록한_API_KEY
+```
+
+`.env.local`은 로컬 개발용이므로 Git에 올리지 않습니다. `.env.example`에는 변수 이름과 안전한 기본값만 기록합니다.
+
+### SPA fallback
+
+이 프로젝트는 `createWebHistory()`를 사용합니다. `/weather/kr-seoul`, `/battle`처럼 하위 주소에서 새로고침해도 동작하려면 배포 서비스가 알 수 없는 경로를 `index.html`로 보내도록 SPA rewrite 또는 fallback을 설정해야 합니다.
+
+### 배포 전 체크리스트
+
+- [ ] `npm ci` 또는 `npm install` 성공
+- [ ] `npm run lint` 성공
+- [ ] `npm test` 성공
+- [ ] `npm run build` 성공
+- [ ] 배포 환경의 OpenWeather 변수 등록
+- [ ] `.env.local`과 실제 API Key가 Git에 포함되지 않았는지 확인
+- [ ] `/`, `/weather`, `/weather/:cityId`, `/indices`, `/favorites`, `/battle`, `/about` 직접 접근 확인
+- [ ] 라이트·다크 모드와 섭씨·화씨 전환 확인
+- [ ] 모바일 레이아웃과 도시 검색 확인
+
+---
+
+## 문제 해결
+
+### `npm install`에서 ERESOLVE가 발생합니다
+
+의존성 버전이 서로 요구하는 Peer Dependency와 맞지 않을 때 발생합니다. 먼저 `package.json`과 `package-lock.json`을 함께 유지한 상태에서 다음 명령을 사용하세요.
+
+```bash
+npm install
+```
+
+무조건 `--force`나 `--legacy-peer-deps`를 사용하면 실제로 맞지 않는 조합을 설치할 수 있습니다. 특히 `oxlint`와 `eslint-plugin-oxlint`는 호환되는 버전 범위를 맞춰야 합니다.
+
+### OpenWeather 요청이 401입니다
+
+다음을 확인하세요.
+
+1. `.env.local`의 변수명이 `VITE_OPENWEATHER_KEY`인지 확인합니다.
+2. Key 앞뒤에 따옴표나 불필요한 공백이 없는지 확인합니다.
+3. OpenWeather 계정에서 Key가 Active 상태인지 확인합니다.
+4. 새 Key는 활성화까지 시간이 걸릴 수 있습니다.
+5. 개발 서버를 종료하고 다시 시작합니다.
+6. Postman에서 같은 Key로 Current Weather 요청이 200인지 확인합니다.
+
+예시:
+
+```text
+https://api.openweathermap.org/data/2.5/weather
+?lat=37.5665
+&lon=126.9780
+&units=metric
+&lang=kr
+&appid=YOUR_API_KEY
+```
+
+API Key가 포함된 전체 URL이나 Axios 오류 객체를 공개 저장소, 화면 캡처 또는 콘솔 로그에 올리지 마세요.
+
+### 요청이 429입니다
+
+OpenWeather 요청 한도를 초과한 상태입니다. 잠시 기다린 뒤 다시 시도하거나 Mock 모드로 전환하세요.
+
+```dotenv
+VITE_WEATHER_SOURCE=mock
+```
+
+### `npm run dev`를 실행했는데 브라우저가 자동으로 열리지 않습니다
+
+Vite는 기본적으로 터미널에 주소만 표시합니다. 출력된 `Local` 주소를 브라우저에 직접 입력하세요.
+
+### 다른 기기에서 접속하고 싶습니다
+
+`package.json`의 개발 명령은 이미 `vite --host`로 설정되어 있습니다. 같은 네트워크의 기기에서 터미널에 표시된 `Network` 주소로 접속할 수 있습니다.
+
+방화벽, 회사 네트워크 또는 공유기 설정에 따라 접근이 차단될 수 있습니다.
+
+### 검색 결과가 없습니다
+
+Mock 모드는 로컬 국내 도시 카탈로그 안에서만 검색합니다. 카탈로그에 없는 도시를 동적으로 검색하려면 OpenWeather 모드를 사용해야 합니다.
+
+OpenWeather 모드에서도 결과는 국내 `KR` 지역으로 제한됩니다.
+
+### 새로고침했더니 즐겨찾기와 설정이 사라졌습니다
+
+현재 의도된 동작입니다. Pinia 상태를 Local Storage에 저장하지 않기 때문에 새로고침 시 초기화됩니다.
+
+### 동적 상세 URL을 배포 서버에서 새로고침하면 404가 발생합니다
+
+Vue Router가 `createWebHistory()`를 사용하므로 배포 서버에 SPA fallback 설정이 필요합니다. 모든 알 수 없는 요청을 `index.html`로 보내도록 사용하는 배포 서비스의 rewrite 설정을 추가하세요.
+
+---
+
+## 현재 저장 정책과 제한 사항
+
+- 날씨 데이터와 설정은 브라우저 메모리에만 유지됩니다.
+- 즐겨찾기와 최근 검색은 새로고침하면 초기화됩니다.
+- 도시 대결 결과와 전적은 저장하지 않습니다.
+- 운세 생년월일은 팝업을 닫는 즉시 초기화되며 외부로 보내지 않습니다.
+- 운세는 로컬 Mock JSON 기반의 오락용 콘텐츠입니다.
+- 음악 추천 목록은 로컬 JSON이며 실제 재생은 Spotify Embed와 네트워크 상태에 영향을 받습니다.
+- OpenWeather 무료 5 day / 3 hour Forecast 범위 안에서만 일별 예보를 제공합니다.
+- 자외선, 체감 강수량, 실시간 레이더와 기상 특보는 아직 제공하지 않습니다.
+- `VITE_OPENWEATHER_KEY`는 브라우저에서 사용하는 수업용 Key입니다. 비밀성이 필요한 API는 별도 백엔드가 필요합니다.
+
+---
+
+## 참고 링크
+
+- [Vue 공식 문서](https://vuejs.org/)
+- [Pinia 공식 문서](https://pinia.vuejs.org/)
+- [Vue Router 공식 문서](https://router.vuejs.org/)
+- [Vite 공식 문서](https://vite.dev/)
+- [Element Plus 공식 문서](https://element-plus.org/)
+- [Axios 공식 문서](https://axios-http.com/)
+- [OpenWeather Current Weather API](https://openweathermap.org/current)
+- [OpenWeather 5 Day / 3 Hour Forecast](https://openweathermap.org/forecast5)
+- [OpenWeather Geocoding API](https://openweathermap.org/api/geocoding-api)
+- [OpenWeather Air Pollution API](https://openweathermap.org/api/air-pollution)
+
+---
+
+Weather Walk는 학습 과정에서 기능과 구조를 단계적으로 확장한 프로젝트입니다.
+기능을 추가할 때는 **외부 응답은 Mapper로 정리하고, 공유 상태는 Store에 두며, 계산은 순수 함수로 분리하고, UI는 props/emit 중심으로 유지하는 것**을 기본 원칙으로 합니다.

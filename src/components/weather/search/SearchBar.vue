@@ -6,18 +6,16 @@
     검색을 실행하지 않는다. 입력이 바뀌면 부모에게 알리기만 하고,
     실제 검색(디바운스·API 호출)은 부모→스토어가 처리한다.
 
-  부모:  WeatherParent.vue — 히어로 아래 .search-shell 안
+  부모:  WeatherHomeView.vue — 히어로 아래 .search-shell 안
   자식:  BaseDashboardCard.vue — 패널 껍데기를 빌려 쓴다
 
   한글 IME 처리 (과제 1 요건 3):
-    v-model을 쓰지 않고 :value / @input 으로 나눠 처리한다.
-    v-model은 한글 조합이 끝나야 값을 반영하는 경우가 있어,
-    조합 중 글자가 유실되거나 한 박자 늦게 반영될 수 있다.
-    :value + @input 은 input 이벤트가 날 때마다 그대로 올려보내므로
-    "부" → "부사" → "부산" 각 단계가 모두 부모에 전달된다.
+    ElInput의 model-value / input 이벤트를 사용해 입력값을 부모에 즉시 전달한다.
+    검색 실행과 상태 관리는 여전히 부모와 Store가 담당한다.
 -->
 <script setup>
-import BaseDashboardCard from './BaseDashboardCard.vue'
+import { Search } from '@element-plus/icons-vue'
+import BaseDashboardCard from '../shared/BaseDashboardCard.vue'
 
 /**
  * props
@@ -47,41 +45,49 @@ const emit = defineEmits(['update-query', 'submit', 'select-recent', 'remove-rec
 <template>
   <BaseDashboardCard
     eyebrow="CITY FINDER"
-    title="오늘 걸을 도시를 찾아보세요"
+    title="당신의 도시를 어디인가요?"
     title-id="city-search-title"
   >
     <!-- 헤더 우측: 현재 필터에 걸린 도시 수 -->
     <template #meta>
-      <span class="result-count">{{ resultCount }}개 도시</span>
+      <ElTag class="result-count" round>{{ resultCount }}개 도시</ElTag>
     </template>
 
     <!-- .prevent 로 폼 기본 제출(페이지 새로고침)을 막는다 -->
     <form class="search-form" @submit.prevent="emit('submit')">
-      <span aria-hidden="true">⌕</span>
-      <input
-        :value="modelValue"
-        type="search"
+      <ElInput
+        class="search-input"
+        :model-value="modelValue"
+        :prefix-icon="Search"
+        size="large"
+        clearable
         autocomplete="off"
-        placeholder="서울, 울산, 제주처럼 입력해 보세요"
+        placeholder="당신의 도시를 입력해 주세요"
         aria-label="도시 검색"
-        @input="emit('update-query', $event.target.value)"
+        @input="emit('update-query', $event)"
+        @clear="emit('update-query', '')"
       />
-      <button type="submit">검색</button>
+      <ElButton class="search-button" type="primary" size="large" native-type="submit"
+        >검색</ElButton
+      >
     </form>
 
     <!-- 최근 검색어: 있을 때만 노출. 태그마다 [검색어][×] 두 버튼 -->
     <div v-if="recentSearches.length" class="recent-row">
       <span>최근 검색</span>
-      <div v-for="item in recentSearches" :key="item" class="recent-tag">
-        <button type="button" @click="emit('select-recent', item)">{{ item }}</button>
-        <button
-          type="button"
-          :aria-label="`${item} 최근 검색어 삭제`"
-          @click="emit('remove-recent', item)"
-        >
-          ×
-        </button>
-      </div>
+      <ElTag
+        v-for="item in recentSearches"
+        :key="item"
+        class="recent-tag"
+        round
+        closable
+        role="button"
+        tabindex="0"
+        @click="emit('select-recent', item)"
+        @keydown.enter="emit('select-recent', item)"
+        @close.stop="emit('remove-recent', item)"
+        >{{ item }}</ElTag
+      >
     </div>
   </BaseDashboardCard>
 </template>
@@ -117,10 +123,6 @@ const emit = defineEmits(['update-query', 'submit', 'select-recent', 'remove-rec
 /* "8개 도시" 뱃지 — 패널 우측 상단. 연초록 배경 + 진초록 글자 */
 .result-count {
   flex: 0 0 auto;
-  border-radius: 999px;
-  padding: 7px 11px;
-  background: var(--primary-100);
-  color: var(--primary-800);
   font-size: 0.76rem;
   font-weight: 750;
 }
@@ -128,43 +130,40 @@ const emit = defineEmits(['update-query', 'submit', 'select-recent', 'remove-rec
 /* 검색 입력줄 — 패널 중앙. [⌕] [입력창] [검색버튼] 가로 배치 */
 .search-form {
   gap: 10px;
-  border: 1px solid var(--border-strong);
-  border-radius: 15px;
-  padding: 7px 8px 7px 15px;
-  background: rgba(255, 255, 255, 0.82);
-  transition:
-    box-shadow 0.2s,
-    border-color 0.2s;
 }
 
-/* 입력 중 — 테두리가 초록으로 바뀌고 연초록 링이 생긴다 */
-.search-form:focus-within {
-  border-color: var(--primary-500);
-  box-shadow: 0 0 0 4px rgba(57, 132, 99, 0.12);
-}
-
-/* 입력창 — 남는 폭을 모두 차지. 자체 테두리·배경 없음 */
-input {
+.search-input {
   min-width: 0;
   flex: 1;
-  border: 0;
-  outline: 0;
-  padding: 8px 0;
-  background: transparent;
-  color: var(--ink-900);
-  font: inherit;
 }
 
-/* [검색] 버튼 — 입력줄 우측 끝. 진초록 배경 + 흰 글자 */
-.search-form > button {
+/* Element Plus 입력창 내부까지 알약 형태로 만들어 검색 영역을 부드럽게 보이게 한다. */
+.search-input :deep(.el-input__wrapper) {
+  border-radius: 999px;
+  padding-inline: 18px;
+  background: var(--surface-soft);
+  box-shadow: 0 0 0 1px var(--border-soft) inset;
+}
+
+.search-input :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 2px var(--primary-500) inset;
+}
+
+/* 기본 단색 버튼 대신 대시보드의 파랑 계열 그라디언트를 사용한다. */
+.search-button {
+  flex: 0 0 auto;
   border: 0;
-  border-radius: 11px;
-  padding: 10px 17px;
-  background: var(--primary-700);
-  color: white;
-  cursor: pointer;
-  font: inherit;
+  border-radius: 999px;
+  padding-inline: 24px;
+  background: linear-gradient(135deg, #1687e8, #1765c7);
+  box-shadow: 0 8px 18px rgba(23, 101, 199, 0.24);
+  color: #fff;
   font-weight: 750;
+}
+
+.search-button:hover,
+.search-button:focus-visible {
+  background: linear-gradient(135deg, #2797f1, #1a71d8);
 }
 
 /* 최근 검색 줄 — 입력줄 아래. 태그가 많으면 다음 줄로 넘어간다 */
@@ -178,27 +177,7 @@ input {
 
 /* 검색어 태그 — 연회색 배경의 알약. 안에 버튼 두 개가 붙어 있다 */
 .recent-tag {
-  display: inline-flex;
-  overflow: hidden;
-  border: 1px solid var(--border-soft);
-  border-radius: 999px;
-  background: var(--surface-muted);
-}
-
-/* 태그 본문 버튼 (검색어 텍스트) */
-.recent-tag button {
-  border: 0;
-  padding: 6px 9px;
-  background: transparent;
-  color: var(--ink-700);
   cursor: pointer;
-  font: inherit;
-}
-
-/* 태그 우측 × 버튼 — 본문보다 흐린 색으로 보조 동작임을 표시 */
-.recent-tag button:last-child {
-  padding-left: 2px;
-  color: var(--ink-400);
 }
 
 /* 좁은 화면 — 여백을 줄이고, 자리를 많이 먹는 결과 개수 뱃지는 숨긴다 */

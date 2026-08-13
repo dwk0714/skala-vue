@@ -7,11 +7,10 @@
     스토어를 모르고, 자기 안에 무엇이 들어오는지도 모른다.
 
   부모 (이 컴포넌트를 쓰는 쪽):
-    WeatherParent.vue      — 지역별 날씨 / 생활 지수 두 패널
+    날씨 View와 하위 패널 — 지역별 날씨 / 생활 지수 패널
     SearchBar.vue          — 도시 검색 패널
     PreparationPanel.vue   — 외출 준비물 패널
     WalkTimePanel.vue      — 산책 추천 시간 패널
-    LogPanel.vue           — 반응형 상태 추적 패널
 
   자식:
     없음. 슬롯으로 받은 내용을 그대로 렌더할 뿐이다.
@@ -69,6 +68,7 @@ defineProps({
   padding: 22px;
   background: var(--card-bg, var(--surface-glass));
   box-shadow: var(--shadow-card);
+  backdrop-filter: var(--glass-blur);
 }
 
 /*

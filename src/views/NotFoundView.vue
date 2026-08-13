@@ -2,7 +2,7 @@
   <main class="not-found">
     <p>404</p>
     <h1>페이지를 찾을 수 없어요.</h1>
-    <RouterLink to="/">날씨 대시보드로 돌아가기</RouterLink>
+    <RouterLink to="/">메인으로 돌아가기</RouterLink>
   </main>
 </template>
 

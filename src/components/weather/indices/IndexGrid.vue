@@ -6,7 +6,7 @@
     지수가 몇 개인지, 어떤 지수인지 알지 못한다. 배열을 그대로 돌 뿐이라
     지수를 추가해도 이 파일은 수정할 필요가 없다.
 
-  부모:  WeatherParent.vue — "생활 날씨 지수" 패널 안에 놓인다
+  부모:  WeatherIndicesView.vue — "생활 날씨 지수" 패널 안에 놓인다
   자식:  IndexCard.vue     — 지수 하나당 한 장
 -->
 <script setup>
@@ -23,9 +23,9 @@ defineProps({ indices: { type: Array, default: () => [] } })
 </script>
 
 <template>
-  <div class="index-grid">
+  <TransitionGroup name="index-card" tag="div" class="index-grid">
     <IndexCard v-for="index in indices" :key="index.id" :index="index" />
-  </div>
+  </TransitionGroup>
 </template>
 
 <style scoped>
@@ -37,6 +37,20 @@ defineProps({ indices: { type: Array, default: () => [] } })
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 14px;
+}
+
+.index-card-enter-active,
+.index-card-leave-active,
+.index-card-move {
+  transition:
+    opacity 240ms ease,
+    transform 240ms ease;
+}
+
+.index-card-enter-from,
+.index-card-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
 }
 
 /* 노트북 폭 — 3열로 줄여 카드가 너무 좁아지지 않게 한다 */

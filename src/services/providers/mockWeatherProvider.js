@@ -21,8 +21,10 @@ export const mockWeatherProvider = {
    *       화면에서 즐겨찾기를 토글할 때 WEATHER_MOCK 자체가 오염되어,
    *       다음 로드에 이전 상태가 섞여 나온다.
    */
-  async listInitialCities() {
-    return structuredClone(WEATHER_MOCK)
+  async listInitialCities({ onCity } = {}) {
+    const cities = structuredClone(WEATHER_MOCK)
+    cities.forEach((city, index) => onCity?.(city, index))
+    return cities
   },
 
   /**
@@ -48,5 +50,13 @@ export const mockWeatherProvider = {
     const weather = WEATHER_MOCK.find((item) => isSameLocation(item, location))
     if (!weather) throw new Error('Mock 데이터에서 해당 도시를 찾지 못했습니다.')
     return structuredClone(weather)
+  },
+
+  async fetchCitySummary(location) {
+    return this.fetchCityWeather(location)
+  },
+
+  async fetchCityDetails(location) {
+    return this.fetchCityWeather(location)
   },
 }

@@ -1,0 +1,101 @@
+[
+  {
+    "id": "sunny-happy-hits",
+    "weatherTypes": ["sunny"],
+    "dayParts": ["morning", "day"],
+    "title": "햇살 좋은 날의 팝",
+    "description": "가벼운 발걸음과 잘 어울리는 밝고 경쾌한 음악이에요.",
+    "genres": ["Pop", "Feel Good"],
+    "spotifyId": "37i9dQZF1DXdPec7aLTmlC"
+  },
+  {
+    "id": "sunny-mood-booster",
+    "weatherTypes": ["sunny"],
+    "dayParts": ["morning", "day"],
+    "title": "맑은 날의 기분 전환",
+    "description": "활동적인 낮을 산뜻하게 채워주는 긍정적인 선곡이에요.",
+    "genres": ["Pop", "Dance"],
+    "spotifyId": "37i9dQZF1DX3rxVfibe1L0"
+  },
+  {
+    "id": "sunny-acoustic-evening",
+    "weatherTypes": ["sunny"],
+    "dayParts": ["evening", "night"],
+    "title": "맑은 저녁의 어쿠스틱",
+    "description": "하루를 부드럽게 마무리하기 좋은 잔잔한 기타 선곡이에요.",
+    "genres": ["Acoustic", "Chill"],
+    "spotifyId": "37i9dQZF1DX6VdMW310YC7"
+  },
+  {
+    "id": "cloudy-lofi",
+    "weatherTypes": ["cloudy"],
+    "dayParts": ["morning", "day", "evening", "night"],
+    "title": "흐린 날의 로파이",
+    "description": "차분한 하늘 아래 집중과 휴식을 돕는 부드러운 비트예요.",
+    "genres": ["Lo-fi", "Chillhop"],
+    "spotifyId": "37i9dQZF1DWWQRwui0ExPn"
+  },
+  {
+    "id": "cloudy-soft-pop",
+    "weatherTypes": ["cloudy"],
+    "dayParts": ["morning", "day", "evening", "night"],
+    "title": "구름 사이의 소프트 팝",
+    "description": "무거운 날씨를 가볍게 환기해 주는 편안한 팝 음악이에요.",
+    "genres": ["Soft Pop", "Easy Listening"],
+    "spotifyId": "37i9dQZF1DWTwnEm1IYyoj"
+  },
+  {
+    "id": "rain-jazz",
+    "weatherTypes": ["rain"],
+    "dayParts": ["morning", "day", "evening", "night"],
+    "title": "비 오는 날의 재즈",
+    "description": "창밖의 빗소리와 자연스럽게 어우러지는 차분한 재즈예요.",
+    "genres": ["Jazz", "Piano"],
+    "spotifyId": "37i9dQZF1DX7K31D69s4M1"
+  },
+  {
+    "id": "rain-chill",
+    "weatherTypes": ["rain"],
+    "dayParts": ["morning", "day", "evening", "night"],
+    "title": "빗길을 위한 칠 팝",
+    "description": "비 오는 이동 시간을 느긋하게 만들어 주는 부드러운 선곡이에요.",
+    "genres": ["Chill Pop", "R&B"],
+    "spotifyId": "37i9dQZF1DX4WYpdgoIcn6"
+  },
+  {
+    "id": "snow-piano",
+    "weatherTypes": ["snow"],
+    "dayParts": ["morning", "day", "evening", "night"],
+    "title": "눈 내리는 날의 피아노",
+    "description": "고요한 설경처럼 맑고 편안한 피아노 음악이에요.",
+    "genres": ["Piano", "Instrumental"],
+    "spotifyId": "37i9dQZF1DX4sWSpwq3LiO"
+  },
+  {
+    "id": "snow-classical",
+    "weatherTypes": ["snow"],
+    "dayParts": ["morning", "day", "evening", "night"],
+    "title": "겨울 풍경의 클래식",
+    "description": "차가운 공기와 포근한 실내에 모두 어울리는 클래식 선곡이에요.",
+    "genres": ["Classical", "Calm"],
+    "spotifyId": "37i9dQZF1DWWEJlAGA9gs0"
+  },
+  {
+    "id": "storm-deep-focus",
+    "weatherTypes": ["thunder", "hail"],
+    "dayParts": ["morning", "day", "evening", "night"],
+    "title": "폭풍우 속의 딥 포커스",
+    "description": "거친 바깥 날씨 대신 실내 집중력을 채워주는 깊은 사운드예요.",
+    "genres": ["Ambient", "Focus"],
+    "spotifyId": "37i9dQZF1DWZeKCadgRdKQ"
+  },
+  {
+    "id": "storm-peaceful-piano",
+    "weatherTypes": ["thunder", "hail"],
+    "dayParts": ["morning", "day", "evening", "night"],
+    "title": "천둥을 덮는 잔잔한 피아노",
+    "description": "요란한 날씨 속에서도 마음을 차분하게 가라앉혀 주는 음악이에요.",
+    "genres": ["Piano", "Relax"],
+    "spotifyId": "37i9dQZF1DX4sWSpwq3LiO"
+  }
+]

@@ -6,18 +6,21 @@
     무엇을 챙길지 판단하는 로직은 utils/recommendations/preparation.js 가 이미 끝냈고,
     여기서는 완성된 목록을 받아 그리기만 한다.
 
-  부모:  WeatherParent.vue — 선택 도시 아래 2단 그리드의 왼쪽 칸
+  부모:  WeatherIndicesView.vue — 선택 도시 아래 2단 그리드의 왼쪽 칸
   자식:  BaseDashboardCard.vue — 패널 껍데기를 빌려 쓴다
 -->
 <script setup>
-import BaseDashboardCard from './BaseDashboardCard.vue'
+import { useTemperature } from '../../../composables/useTemperature.js'
+import BaseDashboardCard from '../shared/BaseDashboardCard.vue'
+
+const { displayTemperature, unitSymbol } = useTemperature()
 
 /**
  * props
  *
  * @property {string} cityName  패널 제목에 넣을 도시 이름 (예: "서울 외출 준비")
  * @property {Array}  items     준비물 목록. getPreparationItems()의 결과.
- *                              각 원소는 { id, icon, label, detail }
+ *                              각 원소는 { id, icon, label, detail, temperature? }
  *                              - label  준비물 이름 (예: "우산")
  *                              - detail 왜 필요한지 (예: "강수확률 90%")
  *                              옷차림은 항상 1개 포함되고, 나머지는 조건을 만족할 때만 들어온다
@@ -41,7 +44,9 @@ defineProps({
         <span>{{ item.icon }}</span>
         <div>
           <strong>{{ item.label }}</strong
-          ><small>{{ item.detail }}</small>
+          ><small v-if="item.temperature !== undefined">
+            {{ displayTemperature(item.temperature) }}{{ unitSymbol }} 기준 옷차림 </small
+          ><small v-else>{{ item.detail }}</small>
         </div>
       </article>
     </div>
@@ -55,7 +60,7 @@ defineProps({
   height:100% 는 오른쪽 산책 패널과 높이를 맞추기 위한 것
 */
 .dashboard-card {
-  --card-icon-bg: #fff3dc;
+  --card-icon-bg: color-mix(in srgb, var(--primary-500) 20%, var(--surface-card));
   height: 100%;
 }
 
@@ -74,7 +79,7 @@ article {
   border: 1px solid var(--border-soft);
   border-radius: 13px;
   padding: 11px;
-  background: rgba(255, 255, 255, 0.67);
+  background: var(--surface-soft);
 }
 
 /* 준비물 이모지 — 칸 좌측 */

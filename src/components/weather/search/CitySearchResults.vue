@@ -5,13 +5,13 @@
     검색어에 매칭된 도시 후보를 검색창 아래에 띄우는 오버레이.
     검색을 직접 수행하지 않는다. 이미 만들어진 결과 배열과 로딩 상태를 받아 그리기만 한다.
 
-  부모:  WeatherParent.vue — SearchBar 바로 아래, .search-shell 안에 놓인다
+  부모:  WeatherHomeView.vue — SearchBar 바로 아래, .search-shell 안에 놓인다
   자식:  없음
 
-  화면 상태 3분기:
+  화면 상태 2분기:
     로딩 중 → "도시를 찾고 있어요…"
     결과 있음 → 도시 버튼 목록
-    결과 없음 → "일치하는 국내 도시가 없습니다."
+    결과 없음 → 패널을 닫는다
 -->
 <script setup>
 /**
@@ -37,8 +37,9 @@ defineEmits(['select'])
 </script>
 
 <template>
-  <div v-if="visible" class="results-panel">
-    <p v-if="status === 'loading'" class="result-state">도시를 찾고 있어요…</p>
+  <!-- 빈 배열일 때 패널까지 숨겨 검색 아래에 빈 안내 카드가 남지 않게 한다. -->
+  <div v-if="visible && (status === 'loading' || results.length)" class="results-panel">
+    <ElSkeleton v-if="status === 'loading'" class="result-skeleton" :rows="2" animated />
     <template v-else-if="results.length">
       <button v-for="city in results" :key="city.id" type="button" @click="$emit('select', city)">
         <!-- 좌측: 도시명 + 행정구역 / 우측: 좌표 (동명 도시 구분용) -->
@@ -48,7 +49,6 @@ defineEmits(['select'])
         <small>{{ city.coords.lat.toFixed(4) }}, {{ city.coords.lon.toFixed(4) }}</small>
       </button>
     </template>
-    <p v-else class="result-state">일치하는 국내 도시가 없습니다.</p>
   </div>
 </template>
 
@@ -69,8 +69,9 @@ defineEmits(['select'])
   overflow: hidden;
   border: 1px solid var(--border-soft);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--surface-solid);
   box-shadow: var(--shadow-float);
+  backdrop-filter: var(--glass-blur);
 }
 
 /* 결과 한 줄 — 좌측 도시명 / 우측 좌표, 아래 헤어라인으로 구분 */
@@ -112,5 +113,9 @@ small {
   padding: 16px;
   color: var(--ink-500);
   text-align: center;
+}
+
+.result-skeleton {
+  padding: 14px;
 }
 </style>

@@ -9,7 +9,7 @@
  * 왜 컴포넌트 밖에 있나:
  *   싱글톤이라 페이지를 나눠도 상태가 유지된다. 대시보드에서 즐겨찾기한 도시가
  *   나중에 만들 즐겨찾기 화면에서도 그대로 보인다.
- *   또 WeatherParent만 이 스토어에 접근하므로, 자식 컴포넌트들은 스토어와 무관하게 재사용된다.
+ *   각 날씨 View가 이 스토어를 공유하며, 자식 컴포넌트는 props/emit으로만 소통한다.
  *
  * 과제 문서와의 이름 대응:
  *   weatherList → cities / filteredWeatherList → filteredCities / selectedCityInfo → selectedCity
@@ -46,6 +46,8 @@ export const useWeatherStore = defineStore('weather', () => {
   let searchTimer
   /** 진행 중인 검색 요청을 취소하기 위한 컨트롤러 */
   let searchController
+  /** 같은 도시의 상세 API가 겹쳐 호출되지 않도록 진행 중 Promise만 보관한다. */
+  const detailRequests = new Map()
 
   /* ───────── getters ───────── */
 
@@ -89,14 +91,50 @@ export const useWeatherStore = defineStore('weather', () => {
     if (loadStatus.value === 'loading' || cities.value.length) return
     loadStatus.value = 'loading'
     error.value = ''
+    const progressiveCities = []
     try {
-      cities.value = await weatherService.listInitialCities()
-      selectedCityId.value = cities.value[0]?.id ?? null
+      const loadedCities = await weatherService.listInitialCities({
+        onCity(city, index) {
+          progressiveCities[index] = city
+          cities.value = progressiveCities.filter(Boolean)
+          cityLoadStatus.value[city.id] = city.hourly?.length ? 'success' : 'idle'
+          selectedCityId.value ??= cities.value[0]?.id ?? null
+        },
+      })
+      if (!cities.value.length) cities.value = loadedCities
+      selectedCityId.value ??= cities.value[0]?.id ?? null
       loadStatus.value = 'success'
     } catch (loadError) {
       error.value = loadError.message
       loadStatus.value = 'error'
     }
+  }
+
+  /** 현재 날씨만 받은 도시에 예보와 미세먼지를 한 번만 보충한다. */
+  const ensureCityDetails = async (cityId) => {
+    const city = cities.value.find((item) => item.id === cityId)
+    if (!city || cityLoadStatus.value[cityId] === 'success') return city ?? null
+    if (detailRequests.has(cityId)) return detailRequests.get(cityId)
+
+    const request = (async () => {
+      cityLoadStatus.value[cityId] = 'loading'
+      try {
+        const details = await weatherService.fetchCityDetails(city)
+        const index = cities.value.findIndex((item) => item.id === cityId)
+        if (index >= 0) cities.value[index] = { ...cities.value[index], ...details }
+        cityLoadStatus.value[cityId] = 'success'
+        return cities.value[index] ?? null
+      } catch (loadError) {
+        cityLoadStatus.value[cityId] = 'error'
+        error.value = loadError.message
+        return null
+      } finally {
+        detailRequests.delete(cityId)
+      }
+    })()
+
+    detailRequests.set(cityId, request)
+    return request
   }
 
   /**
@@ -266,5 +304,6 @@ export const useWeatherStore = defineStore('weather', () => {
     addRecentSearch,
     removeRecentSearch,
     refreshCity,
+    ensureCityDetails,
   }
 })

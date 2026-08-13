@@ -7,9 +7,9 @@
     사용자 동작은 전부 emit으로 부모에 넘긴다. 그래서 어느 화면에든 그대로 붙일 수 있다.
 
   부모:
-    WeatherParent.vue — filteredCities를 v-for로 돌며 이 카드를 렌더한다.
+    날씨 View — 도시 배열을 v-for로 돌며 이 카드를 렌더한다.
     (화면상으로는 BaseDashboardCard 테두리 안에 있지만, 슬롯 콘텐츠는 부모 스코프에서
-     컴파일되므로 props/emit 상대는 BaseDashboardCard가 아니라 WeatherParent다.)
+     컴파일되므로 props/emit 상대는 BaseDashboardCard가 아니라 해당 View다.)
 
   자식:
     없음.
@@ -21,7 +21,9 @@
 -->
 <script setup>
 import { computed } from 'vue'
-import { formatRelativeTime } from '../../utils/formatRelativeTime.js'
+import { useTemperature } from '../../../composables/useTemperature.js'
+import { formatRelativeTime } from '../../../utils/formatRelativeTime.js'
+import { getPm10Level } from '../../../utils/weatherModel.js'
 
 /**
  * props
@@ -42,10 +44,14 @@ const props = defineProps({
  * emits — 모두 city 객체를 그대로 실어 보낸다. 실제 처리는 부모가 한다.
  *
  * select-card     카드 본문 클릭/Enter/Space → 부모가 선택 도시를 바꾼다
- * click-detail    [상세보기] 클릭 → 부모가 window.alert로 요약을 띄운다
+ * click-detail    [상세보기] 클릭 → 부모 View가 상세 라우트로 이동한다
  * toggle-favorite [★] 클릭 → 부모가 스토어의 즐겨찾기를 토글한다
  */
 defineEmits(['select-card', 'click-detail', 'toggle-favorite'])
+
+const { displayTemperature, unitSymbol } = useTemperature()
+/** 상세 데이터를 받은 카드에서도 PM10 숫자만 단독으로 노출하지 않는다. */
+const pm10Info = computed(() => getPm10Level(props.city.pm10))
 
 /**
  * 날씨 문자열을 이모지로 변환한다.
@@ -94,20 +100,25 @@ const weatherIcon = computed(() => {
     <div class="city-copy">
       <span>{{ city.state }}</span>
       <h3>{{ city.name }}</h3>
-      <p>{{ city.status }} · 체감 {{ city.feelsLike }}℃</p>
+      <p>{{ city.status }} · 체감 {{ displayTemperature(city.feelsLike) }}{{ unitSymbol }}</p>
     </div>
 
     <!-- 기온 줄: 좌측 큰 숫자 / 우측 25℃ 기준 더움·선선함 뱃지 (과제 1 요건: v-if 분기) -->
     <div class="temperature-row">
-      <strong>{{ city.temp }}<small>℃</small></strong>
+      <strong
+        >{{ displayTemperature(city.temp) }}<small>{{ unitSymbol }}</small></strong
+      >
       <span v-if="city.temp >= 25" class="temp-badge hot">☀ 더움</span>
       <span v-else class="temp-badge cool">❄ 선선함</span>
     </div>
 
     <!-- 보조 지표 두 칸: 강수확률 / 미세먼지 -->
     <div class="card-meta">
-      <span>강수 {{ Math.round(city.pop * 100) }}%</span>
-      <span>미세먼지 {{ city.pm10 }}</span>
+      <template v-if="city.hourly?.length">
+        <span>강수 {{ Math.round(city.pop * 100) }}%</span>
+        <span>미세먼지 {{ pm10Info.value }} · {{ pm10Info.label }}</span>
+      </template>
+      <span v-else>강수·미세먼지는 상세에서 확인</span>
     </div>
 
     <!-- 카드 바닥: 좌측 상대 시간 / 우측 상세보기 (버블링 차단 필수) -->
@@ -135,6 +146,7 @@ const weatherIcon = computed(() => {
   padding: 18px;
   background: var(--surface-card);
   box-shadow: var(--shadow-card);
+  backdrop-filter: blur(18px) saturate(135%);
   cursor: pointer;
   transition:
     transform 0.2s,
@@ -152,13 +164,13 @@ const weatherIcon = computed(() => {
 .weather-card.selected {
   border-color: var(--primary-500);
   box-shadow:
-    0 0 0 3px rgba(65, 145, 108, 0.14),
+    0 0 0 3px var(--focus-ring),
     var(--shadow-float);
 }
 
 /* 키보드 포커스 — 연초록 외곽선 */
 .weather-card:focus-visible {
-  outline: 3px solid rgba(65, 145, 108, 0.25);
+  outline: 3px solid var(--focus-ring);
   outline-offset: 3px;
 }
 
@@ -244,14 +256,14 @@ h3 {
 
 /* 25℃ 이상 — 살구빛 배경 + 주황 글자 */
 .temp-badge.hot {
-  background: #fff0e5;
-  color: #c55b2d;
+  background: color-mix(in srgb, #ff9b52 22%, var(--surface-card));
+  color: color-mix(in srgb, #ed7e2b 78%, var(--ink-900));
 }
 
 /* 25℃ 미만 — 연하늘 배경 + 파란 글자 */
 .temp-badge.cool {
-  background: #e8f5ff;
-  color: #3277a6;
+  background: color-mix(in srgb, #59b7ff 20%, var(--surface-card));
+  color: color-mix(in srgb, #2993e7 76%, var(--ink-900));
 }
 
 /* 보조 지표 줄 — 기온 줄 아래 */

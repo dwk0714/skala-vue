@@ -1,0 +1,52 @@
+:root {
+  --el-color-primary: var(--primary-600);
+  --el-color-primary-light-3: var(--primary-500);
+  --el-color-primary-light-5: color-mix(in srgb, var(--primary-500) 65%, white);
+  --el-color-primary-light-7: var(--primary-100);
+  --el-color-primary-light-9: var(--primary-050);
+  --el-bg-color: var(--surface-solid);
+  --el-bg-color-overlay: var(--surface-solid);
+  --el-fill-color: var(--surface-muted);
+  --el-fill-color-light: var(--surface-soft);
+  --el-fill-color-blank: var(--surface-input);
+  --el-text-color-primary: var(--ink-900);
+  --el-text-color-regular: var(--ink-700);
+  --el-text-color-secondary: var(--ink-500);
+  --el-text-color-placeholder: var(--ink-400);
+  --el-border-color: var(--border-strong);
+  --el-border-color-light: var(--border-soft);
+  --el-border-radius-base: 12px;
+  --el-border-radius-small: 10px;
+  --el-box-shadow-light: var(--shadow-card);
+  --el-box-shadow: var(--shadow-float);
+  --el-mask-color: rgba(3, 14, 30, 0.58);
+}
+
+.el-popper,
+.el-select__wrapper,
+.el-input__wrapper,
+.el-picker__popper,
+.el-message {
+  backdrop-filter: blur(18px) saturate(140%);
+}
+
+.el-select__wrapper,
+.el-input__wrapper {
+  background: var(--surface-input);
+  box-shadow: 0 0 0 1px var(--border-strong) inset;
+}
+
+.el-button--primary {
+  border: 0;
+  background: var(--accent-gradient);
+}
+
+.el-button--primary:hover,
+.el-button--primary:focus-visible {
+  filter: brightness(1.04);
+}
+
+.el-skeleton {
+  --el-skeleton-color: var(--surface-muted);
+  --el-skeleton-to-color: var(--surface-hover);
+}

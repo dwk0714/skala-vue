@@ -68,3 +68,18 @@ export const isSameLocation = (left, right) =>
   left.id === right.id ||
   (Number(left.coords?.lat).toFixed(4) === Number(right.coords?.lat).toFixed(4) &&
     Number(left.coords?.lon).toFixed(4) === Number(right.coords?.lon).toFixed(4))
+
+/**
+ * PM10 농도를 사용자가 바로 이해할 수 있는 5단계 등급으로 바꾼다.
+ * 계산에는 원본 수치를 유지하고 화면에 쓸 value만 정수로 반올림한다.
+ */
+export const getPm10Level = (pm10) => {
+  const rawValue = Math.max(0, Number(pm10) || 0)
+  const value = Math.round(rawValue)
+
+  if (rawValue <= 15) return { level: 'very-good', label: '매우 좋음', value }
+  if (rawValue <= 30) return { level: 'good', label: '좋음', value }
+  if (rawValue <= 80) return { level: 'normal', label: '보통', value }
+  if (rawValue <= 150) return { level: 'bad', label: '나쁨', value }
+  return { level: 'very-bad', label: '매우 나쁨', value }
+}
